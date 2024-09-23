@@ -1,5 +1,6 @@
-#include<iostream>
-#include<cstdlib>
+#include <iostream>
+#include <cstdlib>
+#include <vector>
 using namespace std;
 
 void titlePage() {
@@ -15,33 +16,46 @@ void introMessage() {
 	cout << "Type 'exit' to exit, 'clear' to clear the screen\n";
 }
 
+bool correctCommand(vector <string> keywords, const string& command) {
+	return ranges::find(keywords, command) != keywords.end();
+}
+
+bool correctPosition(const string& keyword, const string& command) {
+	return command.rfind(keyword, 0) == 0;
+}
+
 
 
 int main() {
 	string command;
+	const vector <string> keywords = {"initialize", "screen", "scheduler-test", "scheduler-stop", "report-util", "clear", "exit"};
 
 	titlePage();
 	introMessage();
 
 	do {
+
 		cout << "Enter a command: ";
-		cin >> command;
+		getline(cin, command);
 
 		// Command recognized
-		if (command == "initialize" || command == "screen" || command == "scheduler-test" || command == "scheduler-stop" ||
-			command == "report-util" || command == "clear" || command == "exit")
-		{
+		if (correctCommand(keywords, command)) {
+
 			cout << command << " command recognized. Doing something.\n";
+
+		} else {
+
+			cout << "Command not recognized.\n";
 		}
 
 		// Do special case
+		if (correctCommand(keywords, command) && correctPosition(keywords[5], command)) {
 
-		if (command == "clear") {
 			// Windows
-			system("cls");
+			// system("cls");
 			
 			// Mac
-			// system("clear")
+			system("clear");
 
 			titlePage();
 			introMessage();

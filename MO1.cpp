@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
+#include <string>
 using namespace std;
 
 void titlePage() {
@@ -52,10 +53,10 @@ int main() {
 		if (correctCommand(keywords, command) && correctPosition(keywords[5], command)) {
 
 			// Windows
-			// system("cls");
+			system("cls");
 			
 			// Mac
-			system("clear");
+			// system("clear");
 
 			titlePage();
 			introMessage();

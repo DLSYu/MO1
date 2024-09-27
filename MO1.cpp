@@ -65,6 +65,8 @@ void attachScreen(vector<Process> processVector) {
 			inScreen = false;
 			system("cls");
 			command = "";
+			titlePage();
+			introMessage();
 		}
 		//if user wants to attach screen
 		else if (command.substr(0, 9) == "screen -r") {

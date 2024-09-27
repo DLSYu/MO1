@@ -1,8 +1,6 @@
-#include "process.h"
+#include "Process.h"
 #include <iostream>
-#include <conio.h>
 #include <string>
-
 
 Process::Process(std::string name)
 {

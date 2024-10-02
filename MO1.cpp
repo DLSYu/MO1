@@ -3,8 +3,9 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-using namespace std;
 #include "Process.h"
+
+using namespace std;
 
 void titlePage() {
 	cout << "  ____ ____   ___  ____  _____ ______   __" << endl;
@@ -19,14 +20,7 @@ void introMessage() {
 	cout << "Type 'exit' to exit, 'clear' to clear the screen\n";
 }
 
-bool correctCommand(vector <string> keywords, const string& command) {
-	return ranges::find(keywords, command) != keywords.end();
-	/*return find(keywords.front(), keywords.back(), command) != keywords.back()*/
-}
 
-bool correctPosition(const string& keyword, const string& command) {
-	return command.rfind(keyword, 0) == 0;
-}
 
 void createProcess(std::string command, std::vector<Process>& vector) {
 	system("cls");
@@ -92,6 +86,7 @@ void attachScreen(vector<Process> processVector) {
 
 int main() {
 	string command;
+	bool systemRunning = true;
 	const vector <string> keywords = {"initialize", "scheduler-test", "scheduler-stop", "report-util"};
 	bool inScreen = false; // new variable to check if a screen is up
 	vector<Process> processVector; // list of vectors
@@ -104,28 +99,21 @@ int main() {
 		cout << "Enter a command: ";
 		getline(cin, command);
 
-		// Command recognized
-		if (correctCommand(keywords, command)) {
-
-			cout << command << " command recognized. Doing something.\n";
-
-		} 
 		// Do special case
-		else if (command == "exit" || command == "clear") {
-
-			// Windows
-			system("cls");
+		if (command == "clear") {
 			
-			// Mac
-			// system("clear");
-
+			system("cls");
 			titlePage();
 			introMessage();
 		}
+		else if (command == "exit") {
+			systemRunning = false;
+		}
 		// Add new screen command
-		else if (command.substr(0, 6) == "screen") {
+		else if (command.substr(0, 6) == "screen" && command.size() > 9) {
 			// reattaching existing screen
-			if (command.substr(7, 2) == "-r") {
+			cout << command.size();
+			if (command.substr(7, 2) == "-r" && command.substr(8, 1) == " ") {
 				std::string processName = command.substr(10, command.size());
 				int index = findIndex(processName, processVector);
 				if (index == -1) {
@@ -139,18 +127,21 @@ int main() {
 				}
 			}
 			// creating a new screen
-			else if (command.substr(7, 2) == "-s") {
+			else if (command.substr(7, 2) == "-s" && command.substr(8, 1) == " ") {
 				inScreen = true;
 				createProcess(command, processVector);
 				attachScreen(processVector);
+			} 
+			else {
+				// TODO: Separate wrong command and incomplete command (ex. "screen -s" inc; "screen -ls" wrong)
+				cout << "Command not recognized.\n";
 			}
 		}
 		else {
-
 			cout << "Command not recognized.\n";
 		}
 
-	} while (command != "exit");
+	} while (systemRunning);
 
 	return 0;
 }

@@ -6,6 +6,7 @@ public:
 	Process(std::string name);
 	void displayProcessInfo();
 	bool operator== (std::string key);
+	std::string getCurrentTime();
 	std::string getName() const;
 	std::string getTime() const;
 	int getPid() const;
@@ -21,5 +22,4 @@ private:
 	std::string processType;
 	std::string timeCreated; 
 	std::string gpuMemoryUsage;
-	std::string getCurrentTime();
 };

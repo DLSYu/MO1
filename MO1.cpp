@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+
+#include "CustomLayout.h"
 #include "Process.h"
 
 using namespace std;
@@ -19,8 +21,6 @@ void introMessage() {
 	cout << "Hello, Welcome to CSOPESY commandline!\n";
 	cout << "Type 'exit' to exit, 'clear' to clear the screen\n";
 }
-
-
 
 void createProcess(std::string command, std::vector<Process>& vector) {
 	system("cls");
@@ -108,6 +108,10 @@ int main() {
 		}
 		else if (command == "exit") {
 			systemRunning = false;
+		}
+		else if (command == "layout") {
+			CustomLayout *custom_layout = new CustomLayout;
+			custom_layout->displayLayout(processVector);
 		}
 		// Add new screen command
 		else if (command.substr(0, 6) == "screen" && command.size() > 9) {

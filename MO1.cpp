@@ -112,8 +112,8 @@ int main() {
 		// Add new screen command
 		else if (command.substr(0, 6) == "screen" && command.size() > 9) {
 			// reattaching existing screen
-			cout << command.size();
-			if (command.substr(7, 2) == "-r" && command.substr(8, 1) == " ") {
+
+			if (command.substr(7, 2) == "-r" && command.substr(9, 1) == " ") {
 				std::string processName = command.substr(10, command.size());
 				int index = findIndex(processName, processVector);
 				if (index == -1) {
@@ -127,7 +127,7 @@ int main() {
 				}
 			}
 			// creating a new screen
-			else if (command.substr(7, 2) == "-s" && command.substr(8, 1) == " ") {
+			else if (command.substr(7, 2) == "-s" && command.substr(9, 1) == " ") {
 				inScreen = true;
 				createProcess(command, processVector);
 				attachScreen(processVector);

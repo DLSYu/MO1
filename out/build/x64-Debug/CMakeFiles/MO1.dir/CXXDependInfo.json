@@ -1,0 +1,18 @@
+{
+	"bmi-installation" : null,
+	"compiler-frontend-variant" : "MSVC",
+	"compiler-id" : "MSVC",
+	"compiler-simulate-id" : "",
+	"config" : "Debug",
+	"cxx-modules" : {},
+	"dir-cur-bld" : "C:/Users/mukbookpro/source/repos/DLSYu/MO1/out/build/x64-Debug",
+	"dir-cur-src" : "C:/Users/mukbookpro/source/repos/DLSYu/MO1",
+	"dir-top-bld" : "C:/Users/mukbookpro/source/repos/DLSYu/MO1/out/build/x64-Debug",
+	"dir-top-src" : "C:/Users/mukbookpro/source/repos/DLSYu/MO1",
+	"exports" : [],
+	"forward-modules-from-target-dirs" : [],
+	"include-dirs" : [],
+	"language" : "CXX",
+	"linked-target-dirs" : [],
+	"module-dir" : "C:/Users/mukbookpro/source/repos/DLSYu/MO1/out/build/x64-Debug/CMakeFiles/MO1.dir"
+}

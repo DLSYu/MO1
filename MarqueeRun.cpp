@@ -68,15 +68,16 @@ void MarqueeRun::RunMarquee() {
 
 std::thread MarqueeRun::marqueeThread() {
      MarqueeConsole *marquee_console = new MarqueeConsole;
+     while (true) {
           marquee_console->displayHeader();
           marquee_console->checkCursorPosition();
           // Sleep(500);
-     return std::thread(0);
+     }
+
 
 }
 
 std::thread MarqueeRun::keyboardThread() {
-     bool runningProgram = true;
      std::string input;
      std::string output;
      int ctr = 2;
@@ -88,30 +89,30 @@ std::thread MarqueeRun::keyboardThread() {
           bottom.Y = bufferInfo.dwSize.Y - ctr;
           SetConsoleCursorPosition(hConsole, bottom);
 
-
-          std::cout << "Enter a command for MARQUEE_CONSOLE: " << input;
-          std::cout << std::endl << output;
-          if (_kbhit()) {
-               char ch = _getch();
-               if (ch == '\r') {
-                    if (input == "exit") {
-                         std::cout<<"gout";
-                    } else if (!input.empty()) {
-                         output = "Command processed in MARQUEE_CONSOLE: " + input + "\n" + output;
-                         (ctr)++;
-                    }
-                    input.clear();
-               } else if (ch == '\b') {
-                    if (!input.empty()) {
-                         input.pop_back();
-                    }
+while (true) {
+     std::cout << "Enter a command for MARQUEE_CONSOLE: " << input;
+     std::cout << std::endl << output;
+     if (_kbhit()) {
+          char ch = _getch();
+          if (ch == '\r') {
+               if (input == "exit") {
+                    std::cout<<"gout";
+               } else if (!input.empty()) {
+                    output = "Command processed in MARQUEE_CONSOLE: " + input + "\n" + output;
+                    (ctr)++;
                }
-               else {
-                    input += ch;
+               input.clear();
+          } else if (ch == '\b') {
+               if (!input.empty()) {
+                    input.pop_back();
                }
           }
-          // Sleep(500);
-     return std::thread(0);
+          else {
+               input += ch;
+          }
+     }
+     Sleep(500);
+}
 }
 
 void MarqueeRun::comboThread() {

@@ -5,6 +5,8 @@
 #include <algorithm>
 
 #include "CustomLayout.h"
+#include "MarqueeConsole.h"
+#include "MarqueeRun.h"
 #include "Process.h"
 
 using namespace std;
@@ -112,6 +114,11 @@ int main() {
 		else if (command == "layout") {
 			CustomLayout *custom_layout = new CustomLayout;
 			custom_layout->displayLayout(processVector);
+		}
+		else if (command == "marquee") {
+			MarqueeRun *marquee = new MarqueeRun;
+			marquee->RunMarquee();
+
 		}
 		// Add new screen command
 		else if (command.substr(0, 6) == "screen" && command.size() > 9) {

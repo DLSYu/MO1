@@ -27,7 +27,7 @@ void MarqueeConsole::setCursorPosition(int x, int y) {
 }
 
 void MarqueeConsole::printMarquee() {
-    std::cout << "State! " << this->state << " CoordX: " << this->coordX << " CoordY: " << this->coordY << std::endl;
+    std::cout << "Hello world in marquee!"<< std::endl;
 }
 
 void MarqueeConsole::checkCursorPosition() {

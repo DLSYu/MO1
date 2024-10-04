@@ -118,6 +118,9 @@ int main() {
 		else if (command == "marquee") {
 			MarqueeRun *marquee = new MarqueeRun;
 			marquee->RunMarquee();
+			system("cls");
+			titlePage();
+			introMessage();
 
 		}
 		// Add new screen command

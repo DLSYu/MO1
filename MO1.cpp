@@ -121,7 +121,13 @@ int main() {
 			system("cls");
 			titlePage();
 			introMessage();
-
+		}
+		else if (command == "marquee thread") {
+			MarqueeRun *marquee = new MarqueeRun;
+			marquee->comboThread();
+			system("cls");
+			titlePage();
+			introMessage();
 		}
 		// Add new screen command
 		else if (command.substr(0, 6) == "screen" && command.size() > 9) {

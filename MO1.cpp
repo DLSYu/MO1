@@ -207,7 +207,7 @@ int main() {
 			// Creating some test processes
 			cout << "Creating 5 test processes...\n";
 
-			for (int i = 1; i <= 5; ++i) {
+			for (int i = 1; i <= 10; ++i) {
 				string name = "screen_" + to_string(i);
 				BaseScreen s = BaseScreen(name);
 				/*auto p = make_shared<Process>(i, "process" + to_string(currentPID));*/

@@ -202,9 +202,12 @@ int main() {
 			for (const auto& process : finishedProcesses) {
 				printProcessDetails(process);
 			}
+			cout << endl;
 		}
 		else if (command == "scheduler") {
 			// Creating some test processes
+			cout << "Creating 5 test processes...\n";
+
 			for (int i = 1; i <= 5; ++i) {
 				auto p = make_shared<Process>(i, "process" + to_string(currentPID));
 				readyQueue.push(p);

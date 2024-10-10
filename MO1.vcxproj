@@ -129,10 +129,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BaseScreen.cpp" />
+    <ClCompile Include="ICommand.cpp" />
     <ClCompile Include="MO1.cpp" />
+    <ClCompile Include="PrintCommand.cpp" />
     <ClCompile Include="Process.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BaseScreen.h" />
+    <ClInclude Include="Console.h" />
+    <ClInclude Include="ICommand.h" />
+    <ClInclude Include="PrintCommand.h" />
     <ClInclude Include="Process.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

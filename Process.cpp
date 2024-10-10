@@ -1,40 +1,127 @@
 #include "Process.h"
-#include <iostream>
 #include <string>
+#include "ICommand.h"
+#include "PrintCommand.h"
+#include <fstream>
+using namespace std;
 
-Process::Process(std::string name)
-{
-	this->name = name;
-	this->timeCreated = getCurrentTime();
+Process::Process(int pid, string processName)
+	:pid(pid), processName(processName), cpuCore(-1), commandCounter(0),
+	remainingTime(500), processState(READY), currLine(0), timeCreated(getCurrentTime()) {}
+
+void Process::addCommand(ICommand::CommandType command) { // setting cid to 0 muna
+	commandList.push_back(make_shared<PrintCommand>(0, "Hello World from " + processName + "!"));
 }
 
-void Process::displayProcessInfo()
-{
-	system("cls");
-	std::cout << "Process name: " << this->name << std::endl;
-	std::cout << "Current line of instruction: " << this->currInstruct << "/" << this->totalInstruct << std::endl;
-	std::cout << "Time created: " << this->timeCreated << std::endl;
+void Process::executeCommand() {
+	// if print
+	auto printCmd = dynamic_pointer_cast<PrintCommand>(commandList.back());
+	ofstream logFile;
+	string filename = processName + ".txt";
+
+	// Check if the file already exists
+	bool headersWritten = fileExists(filename);
+
+	logFile.open(filename, ios_base::app);
+	if (logFile.is_open()) {
+		// Write headers only if the file is new
+		if (!headersWritten) {
+			logFile << "Process name: " << processName << endl
+				<< "Logs: " << endl << endl;
+		}
+
+		logFile << "(" << getCurrentTime() << ")"
+			<< "  " << "Core: " << cpuCore
+			<< "  \"" << printCmd->getToPrint() << "\"" << endl;
+
+		logFile.close();
+	}
+
+	commandList.back()->execute();
+	commandList.pop_back();
 }
 
-bool Process::operator==(std::string key)
-{
-	if (this->name == key)
-		return true;
-	else 
-		return false;
+bool Process::fileExists(const string& filename) {
+	ifstream file(filename);
+	return file.good();
 }
 
-std::string Process::getCurrentTime()
-{
-	//attaching a link where i got the code
-	// https://stackoverflow.com/questions/997946/how-to-get-current-time-and-date-in-c
+bool Process::isFinished() const {
+	return processState == FINISHED;
+}
+
+void Process::setCPUCoreID(int coreId) {
+	cpuCore = coreId;
+}
+
+void Process::setState(ProcessState processState) {
+	this->processState = processState;
+}
+
+void Process::setCurrLine(int currLine) {
+	this->currLine = currLine;
+}
+
+int Process::getRemainingTime() const {
+	return remainingTime;
+}
+
+int Process::getCommandCounter() const {
+	return commandCounter;
+}
+
+int Process::getLinesOfCode() const {
+	return 100;
+}
+
+int Process::getCurrLine() const {
+	return currLine;
+}
+
+int Process::getCPUCoreID() const {
+	return cpuCore;
+}
+
+string Process::getName() const {
+	return processName;
+}
+
+string Process::getTimeCreated() const {
+	return timeCreated;
+}
+
+Process::ProcessState Process::getProcessState() const {
+	return processState;
+}
+
+//string Process::getCurrentTime() {
+//    time_t now = time(0);
+//    struct tm tstruct;
+//    char buf[80];
+//    errno_t err;
+//
+//    err = localtime_s(&tstruct, &now);
+//    strftime(buf, sizeof(buf), "%m/%d/%Y %I:%M:%S %p", &tstruct);
+//
+//    return buf;
+//}
+
+string Process::getCurrentTime() {
 	time_t now = time(0);
 	struct tm tstruct;
 	char buf[80];
 	errno_t err;
 
 	err = localtime_s(&tstruct, &now);
-	strftime(buf, sizeof(buf), "%Y-%m-%d, %r", &tstruct);
+	strftime(buf, sizeof(buf), "%m/%d/%Y %I:%M:%S %p", &tstruct);
 
 	return buf;
 }
+
+void Process::initializeCommands() {
+	for (int i = 0; i < 100; ++i) {
+		addCommand(ICommand::PRINT);
+		commandCounter = commandList.size();
+	}
+}
+

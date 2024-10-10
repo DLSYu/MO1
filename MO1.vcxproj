@@ -129,11 +129,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Scheduler\Scheduler\ICommand.cpp" />
+    <ClCompile Include="..\Scheduler\Scheduler\PrintCommand.cpp" />
+    <ClCompile Include="..\Scheduler\Scheduler\Process.cpp" />
     <ClCompile Include="MO1.cpp" />
-    <ClCompile Include="Process.cpp" />
+    <ClCompile Include="ProcessScreen.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Process.h" />
+    <ClInclude Include="..\Scheduler\Scheduler\ICommand.h" />
+    <ClInclude Include="..\Scheduler\Scheduler\PrintCommand.h" />
+    <ClInclude Include="..\Scheduler\Scheduler\Process.h" />
+    <ClInclude Include="ProcessScreen.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

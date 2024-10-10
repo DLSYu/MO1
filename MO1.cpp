@@ -1,10 +1,21 @@
 #include <iostream>
-#include <cstdlib>
+#include <thread> 
+#include <chrono>
+#include <queue>
+#include <mutex>
 #include <vector>
-#include <string>
-#include <algorithm>
-using namespace std;
 #include "Process.h"
+#include "ICommand.h"
+#include "ProcessScreen.h"
+using namespace std;
+
+int currentPID = 1;
+mutex mtx;
+queue<shared_ptr<Process>> readyQueue;
+bool coresAvailable[4] = { true, true, true, true };
+
+vector<shared_ptr<Process>> runningProcesses;
+vector<shared_ptr<Process>> finishedProcesses;
 
 void titlePage() {
 	cout << "  ____ ____   ___  ____  _____ ______   __" << endl;
@@ -28,13 +39,13 @@ bool correctPosition(const string& keyword, const string& command) {
 	return command.rfind(keyword, 0) == 0;
 }
 
-void createProcess(std::string command, std::vector<Process>& vector) {
+void createProcessScreen(std::string command, std::vector<ProcessScreen>& vector) {
 	system("cls");
 	//create process
 	std::string processName = command.substr(10, command.size());
-	Process newProcess = Process(processName);
+	ProcessScreen newProcess = ProcessScreen(processName);
 	vector.push_back(newProcess);
-	newProcess.displayProcessInfo();
+	newProcess.displayProcessScreenInfo();
 }
 
 /**
@@ -43,7 +54,7 @@ void createProcess(std::string command, std::vector<Process>& vector) {
 * @param std::vector<Process> vector - list of processes being ran
 * @returns the index. -1 if not found
 */
-int findIndex(std::string key, std::vector<Process> vector) {
+int findIndex(std::string key, std::vector<ProcessScreen> vector) {
 	for (int i = 0; i < vector.size(); ++i) {
 		if (vector.at(i) == key)
 			return i;
@@ -56,7 +67,7 @@ int findIndex(std::string key, std::vector<Process> vector) {
 * @param vector<Process> processVector used to search for the right process
 * 
 */
-void attachScreen(vector<Process> processVector) {
+void attachScreen(vector<ProcessScreen> processVector) {
 	bool inScreen = true;
 	string command;
 	while (inScreen) {
@@ -78,11 +89,11 @@ void attachScreen(vector<Process> processVector) {
 			//screen found
 			else {
 				system("cls");
-				processVector.at(index).displayProcessInfo();
+				processVector.at(index).displayProcessScreenInfo();
 			}
 		} 
 		else if (command.substr(0, 9) == "screen -s") {
-			createProcess(command, processVector);
+			createProcessScreen(command, processVector);
 		}
 		else {
 			cout << "Command invalid!" << endl;
@@ -90,11 +101,80 @@ void attachScreen(vector<Process> processVector) {
 	}
 }
 
+
+void cpuWorker(int coreId) {
+	while (true) {
+		std::shared_ptr<Process> process = nullptr;
+		bool hasProcess = false;
+
+		{
+			lock_guard<mutex> lock(mtx);
+			if (!readyQueue.empty()) {
+				process = readyQueue.front();
+				readyQueue.pop();
+				process->setCPUCoreID(coreId);
+				coresAvailable[coreId] = false;
+				hasProcess = true;
+				process->setState(Process::RUNNING);
+				runningProcesses.push_back(process);
+			}
+		}
+
+		if (hasProcess) {
+			process->initializeCommands();
+			for (int i = 0; i < process->getCommandCounter(); i++) {
+				this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));  // add delay
+				process->executeCommand();
+			}
+
+			process->setState(Process::FINISHED);
+
+			// Mark core as available
+			{
+				lock_guard<mutex> lock(mtx);
+				runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+				finishedProcesses.push_back(process);
+				coresAvailable[coreId] = true;
+			}
+		}
+
+	}
+}
+
+void scheduler() {
+	while (true) {
+		for (int i = 0; i < 4; ++i) {
+			if (coresAvailable[i] && !readyQueue.empty()) {
+				thread cpuThread(cpuWorker, i);
+				cpuThread.detach();
+			}
+		}
+		this_thread::sleep_for(chrono::milliseconds(100));
+	}
+}
+
+int countAvailCores() {
+	int count = 0;
+	for (int i = 0; i < sizeof(coresAvailable); ++i) {
+		if (coresAvailable[i]) {
+			count++;
+		}
+	}
+	return count;
+}
+
+void printProcessDetails(const shared_ptr<Process>& process) {
+	cout << "Name: " << process->getName()
+		<< " | Core: " << process->getCPUCoreID()
+		<< " | Lines of Code: " << process->getLinesOfCode()
+		<< " |" << endl;
+}
+
 int main() {
 	string command;
 	const vector <string> keywords = {"initialize", "scheduler-test", "scheduler-stop", "report-util"};
 	bool inScreen = false; // new variable to check if a screen is up
-	vector<Process> processVector; // list of vectors
+	vector<ProcessScreen> processVector; // list of vectors
 
 	titlePage();
 	introMessage();
@@ -110,6 +190,32 @@ int main() {
 			cout << command << " command recognized. Doing something.\n";
 
 		} 
+		else if (command == "screen -ls") {
+			cout << "Cores Used: " << 4 - countAvailCores() << endl;
+			cout << "Cores Available: " << countAvailCores() << endl;
+			cout << "--------------------------------------------------------------------" << endl;
+			cout << "Running Processes: " << endl;
+			for (const auto& process : runningProcesses) {
+				printProcessDetails(process);
+			}
+			cout << "Finished Processes: " << endl;
+			for (const auto& process : finishedProcesses) {
+				printProcessDetails(process);
+			}
+		}
+		else if (command == "scheduler") {
+			// Creating some test processes
+			for (int i = 1; i <= 5; ++i) {
+				auto p = make_shared<Process>(i, "process" + to_string(currentPID));
+				readyQueue.push(p);
+				currentPID++; // Increment the PID Global Variable
+			}
+
+
+
+			thread schedulerThread(scheduler);
+			schedulerThread.detach();
+		}
 		// Do special case
 		else if (command == "exit" || command == "clear") {
 
@@ -134,14 +240,14 @@ int main() {
 				else {
 					inScreen = true;
 					system("cls");
-					processVector.at(index).displayProcessInfo();
+					processVector.at(index).displayProcessScreenInfo();
 					attachScreen(processVector);
 				}
 			}
 			// creating a new screen
 			else if (command.substr(7, 2) == "-s") {
 				inScreen = true;
-				createProcess(command, processVector);
+				createProcessScreen(command, processVector);
 				attachScreen(processVector);
 			}
 		}

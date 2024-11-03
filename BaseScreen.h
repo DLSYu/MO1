@@ -11,7 +11,7 @@ class BaseScreen : public Console
 public:
 	BaseScreen(string consoleName, int PID, int linesOfCode)
 		: Console(consoleName),
-		attachedProcess(make_shared<Process>(PID, consoleName, linesOfCode)) {}; // setting pid to 0 muna
+		attachedProcess(make_shared<Process>(PID, consoleName, linesOfCode)) {}; 
 	void onEnabled() override;
 	void process() override;
 	void display() override;

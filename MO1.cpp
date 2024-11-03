@@ -20,6 +20,7 @@ int batch_process_freq;
 int min_ins;
 int max_ins;
 int delay_per_exec;
+int cpuUtil;
 
 
 // Global Variables
@@ -327,6 +328,8 @@ int main() {
 			cout << "Please initialize the scheduler first.\n";
 		}
 		else if (command == "screen -ls") {
+			cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
+			cout << "CPU Utilization: " << cpuUtil << "%" << endl;
 			cout << "Cores Used: " << num_cpu - countAvailCores() << endl;
 			cout << "Cores Available: " << countAvailCores() << endl;
 			cout << "--------------------------------------------------------------------" << endl;

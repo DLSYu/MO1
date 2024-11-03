@@ -46,6 +46,10 @@ bool Process::fileExists(const string& filename) {
 	return file.good();
 }
 
+int Process::getRemainingCommands() {
+	return linesOfCode - currLine;
+}
+
 int Process::getPID() const {
 	return pid;
 }

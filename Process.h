@@ -22,11 +22,13 @@ public:
 	void executeCommand();
 	int getPID() const;
 	bool isFinished() const;
+	int getRemainingCommands();
 	int getRemainingTime() const;
 	int getCommandCounter() const;
 	int getLinesOfCode() const;
 	int getCPUCoreID() const;
 	int getCurrLine() const;
+
 	string getTimeCreated() const;
 	string getName() const;
 	ProcessState getProcessState() const;
@@ -45,6 +47,6 @@ private:
 	string timeCreated;
 	ProcessState processState;
 	vector<shared_ptr<ICommand>> commandList;
-
 	bool fileExists(const string& filename);
+	
 };

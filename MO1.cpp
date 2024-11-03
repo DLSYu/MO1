@@ -9,7 +9,6 @@
 
 #include "BaseScreen.h"
 
-
 using namespace std;
 
 // Config File Variables
@@ -137,66 +136,86 @@ void cpuWorker(int coreId) {
 			}
 		}
 
+
 		if (hasProcess) {
-			if (scheduler_type == "fcfs") {
-				process->initializeCommands();
-				for (int i = 1; i <= process->getCommandCounter(); i++) {
+			process->initializeCommands();
+
+			if (scheduler_type == "rr") {
+				int startLine = process->getCurrLine();
+				int endLine = min(startLine + quantum_cycles, process->getCommandCounter());
+
+				// Busy-wait for delays_per_exec cycles
+				for (int delay = 0; delay < delay_per_exec; ++delay) {
+					this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
+					{
+						lock_guard<mutex> lock(mtx);
+						cpuCycles++;
+					}
+				}
+
+				for (int i = startLine; i <= endLine; ++i) {
 					process->setCurrLine(i);
-					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));  // add delay
+					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));  // Add delay
 					process->executeCommand();
+					{
+						lock_guard<mutex> lock(mtx);
+						cpuCycles++;
+					}
+				}
+
+				if (process->getCurrLine() < process->getCommandCounter()) {
+					// Process is not finished, re-add to queue for next round
+					{
+						lock_guard<mutex> lock(mtx);
+						process->setState(Process::WAITING);
+						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+						readyQueue.push(BaseScreen(process->getName(), process->getPID(), process->getCommandCounter() - process->getCurrLine()));
+					}
+				}
+				else {
+					{
+						lock_guard<mutex> lock(mtx);
+						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+						finishedProcesses.push_back(process);
+					}
+				}
+			}
+			else {
+				for (int i = 1; i <= process->getCommandCounter(); i++) {
+				
+					for (int delay = 0; delay < delay_per_exec; ++delay) {
+						this_thread::sleep_for(chrono::milliseconds(delay_per_exec)); 
+					}
+
+					process->setCurrLine(i);
+					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
+					process->executeCommand();
+
+					{
+						lock_guard<mutex> lock(mtx);
+						cpuCycles++;
+					}
 				}
 
 				process->setState(Process::FINISHED);
-
-				// Mark core as available
-				{
-					lock_guard<mutex> lock(mtx);
+			}
+			
+			// Mark core as available
+			{
+				lock_guard<mutex> lock(mtx);
+				if (process->getProcessState() == Process::FINISHED) {
 					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
 					finishedProcesses.push_back(process);
-					coresAvailable[coreId] = true;
 				}
+				coresAvailable[coreId] = true;
 			}
-			else if (scheduler_type == "rr") {
-				process->initializeCommands();
-				int remainingCommands = process->getRemainingCommands();
-				bool toBeFinished = remainingCommands <= quantum_cycles ? true : false;
-				int timeSlice = toBeFinished ? remainingCommands : quantum_cycles;
-
-				for (int i = 1; i <= timeSlice; i++) {
-					int currLine = process->getCurrLine() + 1;
-					process->setCurrLine(currLine);
-					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));  // add delay
-					process->executeCommand();
-				}
-				Process::ProcessState state = toBeFinished ? Process::FINISHED : Process::WAITING;
-				process->setState(state);
-
-				// Mark core as available
-				{
-					lock_guard<mutex> lock(mtx);
-					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-					if (state == Process::FINISHED) {
-						finishedProcesses.push_back(process);
-						// TODO: remove process from readyQueue?
-					}
-					else {
-						//TODO: am i queuing it right???
-						readyQueue.push(BaseScreen(process->getName(), process->getPID(), process->getLinesOfCode()));
-					}
-					coresAvailable[coreId] = true;
-				}
-			}
-
 		}
 
 	}
 }
 
 void scheduler() {
-	int delayCounter = 0;
-
 	while (true) {
-		// Check if there are available cores
 		for (int i = 0; i < num_cpu; ++i) {
 			if (coresAvailable[i] && !readyQueue.empty()) {
 				thread cpuThread(cpuWorker, i);
@@ -212,21 +231,18 @@ void scheduler() {
 			processVector.push_back(newScreen);	
 		}
 		
-		// Delay and delay_per_exec logic
-		do {
-			this_thread::sleep_for(chrono::milliseconds(500));
+
+		this_thread::sleep_for(chrono::milliseconds(100));
+		{
+			lock_guard<mutex> lock(mtx);
 			cpuCycles++;
-			delayCounter++;
-		} while (delayCounter < delay_per_exec);
-		
-		if (delayCounter >= delay_per_exec) 
-			delayCounter = 0;
+		}
 	}
 }
 
 int countAvailCores() {
 	int count = 0;
-	for (int i = 0; i < sizeof(coresAvailable); ++i) {
+	for (int i = 0; i < coresAvailable.size(); ++i) {
 		if (coresAvailable[i]) {
 			count++;
 		}
@@ -272,8 +288,8 @@ void readConfigFile() {
 	}
 
 	//Change CPU core size
-	coresAvailable.resize(num_cpu, true);
-	
+	coresAvailable = vector<bool>(num_cpu, true);
+
 	// Close the file
 	ConfigFile.close();
 }
@@ -297,6 +313,7 @@ int main() {
 		if (command == "initialize") {
 			isInitialized = true;
 			readConfigFile();
+
 			// start scheduler
 			thread schedulerThread(scheduler);
 			schedulerThread.detach();

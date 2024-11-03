@@ -5,9 +5,9 @@
 #include <fstream>
 using namespace std;
 
-Process::Process(int pid, string processName)
-	:pid(pid), processName(processName), cpuCore(-1), commandCounter(0),
-	remainingTime(500), processState(READY), currLine(0), timeCreated(getCurrentTime()) {}
+Process::Process(int pid, string processName, int linesOfCode)
+	:pid(pid), processName(processName), cpuCore(-1), commandCounter(0), linesOfCode(linesOfCode),
+	remainingTime(200), processState(READY), currLine(0), timeCreated(getCurrentTime()) {}
 
 void Process::addCommand(ICommand::CommandType command) { // setting cid to 0 muna
 	commandList.push_back(make_shared<PrintCommand>(0, "Hello World from " + processName + "!"));
@@ -75,7 +75,7 @@ int Process::getCommandCounter() const {
 }
 
 int Process::getLinesOfCode() const {
-	return 100;
+	return linesOfCode;
 }
 
 int Process::getCurrLine() const {
@@ -123,7 +123,7 @@ string Process::getCurrentTime() {
 }
 
 void Process::initializeCommands() {
-	for (int i = 0; i < 100; ++i) {
+	for (int i = 0; i < getLinesOfCode(); ++i) {
 		addCommand(ICommand::PRINT);
 		commandCounter = commandList.size();
 	}

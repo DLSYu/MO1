@@ -24,11 +24,13 @@ int delay_per_exec;
 
 
 // Global Variables
+bool schedulerRunning = false;
+bool isFirstSchedulerRun = true;
 int currentPID = 1;
+int cpuCycles = 0;
 mutex mtx;
 queue<BaseScreen> readyQueue;
-bool coresAvailable[4] = { true, true, true, true };
-
+vector<bool> coresAvailable;
 vector<shared_ptr<Process>> runningProcesses;
 vector<shared_ptr<Process>> finishedProcesses;
 
@@ -45,6 +47,10 @@ void introMessage() {
 	cout << "Type 'exit' to exit, 'clear' to clear the screen\n";
 }
 
+int getNumOfInstructions() {
+	return rand() % (max_ins - min_ins + 1) + min_ins;
+}
+
 bool correctCommand(vector <string> keywords, const string& command) {
 	return ranges::find(keywords, command) != keywords.end();
 	/*return find(keywords.front(), keywords.back(), command) != keywords.back()*/
@@ -58,7 +64,7 @@ bool correctPosition(const string& keyword, const string& command) {
 void createProcessScreen(std::string processName, std::vector<BaseScreen>& vector) {
 	//create process
 	std::string screenName = processName;
-	BaseScreen newScreen = BaseScreen(screenName, currentPID);
+	BaseScreen newScreen = BaseScreen(screenName, currentPID, getNumOfInstructions());
 	currentPID++;
 	vector.push_back(newScreen);
 }
@@ -154,13 +160,23 @@ void cpuWorker(int coreId) {
 
 void scheduler() {
 	while (true) {
-		for (int i = 0; i < 4; ++i) {
+		// Check if there are available cores
+		for (int i = 0; i < num_cpu; ++i) {
 			if (coresAvailable[i] && !readyQueue.empty()) {
 				thread cpuThread(cpuWorker, i);
 				cpuThread.detach();
 			}
 		}
-		this_thread::sleep_for(chrono::milliseconds(100));
+
+		// Create new process only if there are available cores
+		if (cpuCycles % batch_process_freq == 0 && schedulerRunning == true) {
+			string processName = "screen_" + to_string(currentPID);
+			auto newProcess = make_shared<Process>(currentPID++, processName, getNumOfInstructions());
+			readyQueue.push(BaseScreen(processName, newProcess->getPID(), newProcess->getLinesOfCode()));
+		}
+
+		this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
+		cpuCycles++;
 	}
 }
 
@@ -211,6 +227,9 @@ void readConfigFile() {
 		}
 	}
 
+	//Change CPU core size
+	coresAvailable.resize(num_cpu, true);
+	
 	// Close the file
 	ConfigFile.close();
 }
@@ -235,6 +254,8 @@ int main() {
 			isInitialized = true;
 			readConfigFile();
 			//do file read
+			cout << "Configuration has been read" << endl;
+			cout << endl;
 		}
 
 		//blocks all commands if not initialized
@@ -242,7 +263,7 @@ int main() {
 			cout << "Please initialize the scheduler first.\n";
 		}
 		else if (command == "screen -ls") {
-			cout << "Cores Used: " << 4 - countAvailCores() << endl;
+			cout << "Cores Used: " << num_cpu - countAvailCores() << endl;
 			cout << "Cores Available: " << countAvailCores() << endl;
 			cout << "--------------------------------------------------------------------" << endl;
 			cout << "Running Processes: " << endl;
@@ -279,19 +300,27 @@ int main() {
 		}
 		else if (command == "scheduler-test") {
 			// Creating some test processes
-			cout << "Creating processes...\n";
+			if (!schedulerRunning) {
+				//flag to make new based on cpu cycle
+				schedulerRunning = true;
 
-			for (int i = 1; i <= 10; ++i) {
-				string name = "screen_" + to_string(i);
-				BaseScreen s = BaseScreen(name, currentPID);
-				processVector.push_back(s);
-				/*auto p = make_shared<Process>(i, "process" + to_string(currentPID));*/
-				readyQueue.push(s);
-				currentPID++; // Increment the PID Global Variable
+				// stops from creating new threads
+				if (isFirstSchedulerRun){
+					thread schedulerThread(scheduler);
+					schedulerThread.detach();
+					isFirstSchedulerRun = false;
+				}
+
+				cout << "Scheduler started...\n";
 			}
-
-			thread schedulerThread(scheduler);
-			schedulerThread.detach();
+			else {
+				cout << "Scheduler is already running.\n";
+			}
+		}
+		else if (command == "scheduler-stop") {
+			// Stop the scheduler
+			cout << "Stopping the scheduler...\n";
+			schedulerRunning = false;
 		}
 		// Do special case
 		else if (command == "exit" || command == "clear") {
@@ -328,6 +357,7 @@ int main() {
 				attachScreen(processVector, processName);
 			}
 		}
+		//for testing
 		else {
 
 			cout << "Command not recognized.\n";

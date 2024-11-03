@@ -14,7 +14,7 @@ public:
 		WAITING,
 		FINISHED
 	};
-	Process(int pid, string processName);
+	Process(int pid, string processName, int linesOfCode);
 	void addCommand(ICommand::CommandType command);
 	void setCPUCoreID(int coreId);
 	void setState(ProcessState processState);

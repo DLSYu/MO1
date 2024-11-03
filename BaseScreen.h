@@ -9,9 +9,9 @@ using namespace std;
 class BaseScreen : public Console
 {
 public:
-	BaseScreen(string consoleName)
+	BaseScreen(string consoleName, int PID)
 		: Console(consoleName),
-		attachedProcess(make_shared<Process>(0, consoleName)) {}; // setting pid to 0 muna
+		attachedProcess(make_shared<Process>(PID, consoleName)) {}; // setting pid to 0 muna
 	void onEnabled() override;
 	void process() override;
 	void display() override;

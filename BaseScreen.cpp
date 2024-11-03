@@ -18,10 +18,15 @@ void BaseScreen::display() {
 }
 
 void BaseScreen::printProcessInfo() const {
-	system("cls");
-	std::cout << "Process name: " << this->attachedProcess->getName() << std::endl;
-	std::cout << "Current line of instruction: " << attachedProcess->getCurrLine() << "/" << attachedProcess->getLinesOfCode() << std::endl;
-	std::cout << "Time created: " << this->attachedProcess->getTimeCreated() << std::endl;
+	std::cout << "Process: " << this->attachedProcess->getName() << std::endl;
+	std::cout << "ID: " << this->attachedProcess->getPID() << std::endl << std::endl;
+
+	if (attachedProcess->getCurrLine() < attachedProcess->getLinesOfCode()) {
+		std::cout << "Current instruction line: " << attachedProcess->getCurrLine() << endl;
+		std::cout << "Lines of code: " << attachedProcess->getLinesOfCode() << std::endl;
+	}
+	else
+		std::cout << "Finished!" << std::endl;
 }
 
 string BaseScreen::getConsoleName() const {

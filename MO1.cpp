@@ -54,13 +54,13 @@ bool correctPosition(const string& keyword, const string& command) {
 	return command.rfind(keyword, 0) == 0;
 }
 
-void createProcessScreen(std::string command, std::vector<BaseScreen>& vector) {
-	system("cls");
+//specifically for screen command for creating processes
+void createProcessScreen(std::string processName, std::vector<BaseScreen>& vector) {
 	//create process
-	std::string screenName = command.substr(10, command.size());
-	BaseScreen newScreen = BaseScreen(screenName);
+	std::string screenName = processName;
+	BaseScreen newScreen = BaseScreen(screenName, currentPID);
+	currentPID++;
 	vector.push_back(newScreen);
-	newScreen.printProcessInfo();
 }
 
 /**
@@ -82,34 +82,28 @@ int findIndex(std::string key, std::vector<BaseScreen> vector) {
 * @param vector<Process> processVector used to search for the right process
 *
 */
-void attachScreen(vector<BaseScreen> processVector) {
+void attachScreen(vector<BaseScreen> processVector, string processName) {
+	system("cls");
 	bool inScreen = true;
+	int index = findIndex(processName, processVector);
+	processVector.at(index).printProcessInfo();
+
 	string command;
 	while (inScreen) {
 		cout << "\nroot:\\> ";
 		getline(cin, command);
-		if (command == "exit") {
+		
+		cout << endl;
+		//if user wants to attach screen
+		if (command == "process-smi") {
+			processVector.at(index).printProcessInfo();
+		}
+		else if(command == "exit") {
 			inScreen = false;
 			system("cls");
 			command = "";
 			titlePage();
 			introMessage();
-		}
-		//if user wants to attach screen
-		else if (command.substr(0, 9) == "screen -r") {
-			std::string processName = command.substr(10, command.size());
-			int index = findIndex(processName, processVector);
-			if (index == -1) {
-				cout << "Screen not found." << endl;
-			}
-			//screen found
-			else {
-				system("cls");
-				processVector.at(index).printProcessInfo();
-			}
-		}
-		else if (command.substr(0, 9) == "screen -s") {
-			createProcessScreen(command, processVector);
 		}
 		else {
 			cout << "Command invalid!" << endl;
@@ -217,14 +211,6 @@ void readConfigFile() {
 		}
 	}
 
-	cout << "num-cpu: " << num_cpu << endl;
-	cout << "scheduler: " << scheduler_type << endl;
-	cout << "quantum-cycles: " << quantum_cycles << endl;
-	cout << "batch-process-freq: " << batch_process_freq << endl;
-	cout << "min-ins: " << min_ins << endl;
-	cout << "max-ins: " << max_ins << endl;
-	cout << "delay-per-exec: " << delay_per_exec << endl << endl;
-
 	// Close the file
 	ConfigFile.close();
 }
@@ -291,13 +277,14 @@ int main() {
 			logFile << "--------------------------------------------------------------------" << endl;
 			logFile.close();
 		}
-		else if (command == "scheduler") {
+		else if (command == "scheduler-test") {
 			// Creating some test processes
-			cout << "Creating 5 test processes...\n";
+			cout << "Creating processes...\n";
 
 			for (int i = 1; i <= 10; ++i) {
 				string name = "screen_" + to_string(i);
-				BaseScreen s = BaseScreen(name);
+				BaseScreen s = BaseScreen(name, currentPID);
+				processVector.push_back(s);
 				/*auto p = make_shared<Process>(i, "process" + to_string(currentPID));*/
 				readyQueue.push(s);
 				currentPID++; // Increment the PID Global Variable
@@ -320,10 +307,10 @@ int main() {
 		}
 		// Add new screen command
 		else if (command.substr(0, 6) == "screen") {
+			std::string processName = command.substr(10, command.size());
+			int index = findIndex(processName, processVector);
 			// reattaching existing screen
 			if (command.substr(7, 2) == "-r") {
-				std::string processName = command.substr(10, command.size());
-				int index = findIndex(processName, processVector);
 				if (index == -1) {
 					cout << "Screen not found." << endl;
 				}
@@ -331,14 +318,14 @@ int main() {
 					inScreen = true;
 					system("cls");
 					processVector.at(index).printProcessInfo();
-					attachScreen(processVector);
+					attachScreen(processVector, processName);
 				}
 			}
 			// creating a new screen
 			else if (command.substr(7, 2) == "-s") {
 				inScreen = true;
-				createProcessScreen(command, processVector);
-				attachScreen(processVector);
+				createProcessScreen(command.substr(10, command.size()), processVector);
+				attachScreen(processVector, processName);
 			}
 		}
 		else {

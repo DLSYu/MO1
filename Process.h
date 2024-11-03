@@ -20,6 +20,7 @@ public:
 	void setState(ProcessState processState);
 	void setCurrLine(int currLine);
 	void executeCommand();
+	int getPID() const;
 	bool isFinished() const;
 	int getRemainingTime() const;
 	int getCommandCounter() const;

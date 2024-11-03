@@ -46,6 +46,10 @@ bool Process::fileExists(const string& filename) {
 	return file.good();
 }
 
+int Process::getPID() const {
+	return pid;
+}
+
 bool Process::isFinished() const {
 	return processState == FINISHED;
 }

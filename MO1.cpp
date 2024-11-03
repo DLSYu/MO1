@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <thread> 
 #include <chrono>
 #include <queue>
@@ -10,6 +12,18 @@
 
 using namespace std;
 
+// Config File Variables
+string fileContent;
+int num_cpu;
+string scheduler_type;
+int quantum_cycles;
+int batch_process_freq;
+int min_ins;
+int max_ins;
+int delay_per_exec;
+
+
+// Global Variables
 int currentPID = 1;
 mutex mtx;
 queue<BaseScreen> readyQueue;
@@ -72,6 +86,7 @@ void attachScreen(vector<BaseScreen> processVector) {
 	bool inScreen = true;
 	string command;
 	while (inScreen) {
+		cout << "\nroot:\\> ";
 		getline(cin, command);
 		if (command == "exit") {
 			inScreen = false;
@@ -165,11 +180,60 @@ int countAvailCores() {
 	return count;
 }
 
+void readConfigFile() {
+	string key;
+	string value;
+
+	ifstream ConfigFile("config.txt");
+	
+	// Use a while loop together with the getline() function to read the file line by line
+	while (getline(ConfigFile, fileContent)) {
+		// Output the text from the file
+		istringstream iss(fileContent);
+		iss >> key >> value;
+
+		if (key == "num-cpu") {
+			num_cpu = stoi(value);
+		}
+		else if (key == "scheduler") {
+			value.erase(0, 1); // Remove the first character
+			value.erase(value.size() - 1); // Remove the last character
+			scheduler_type = value;
+		}
+		else if (key == "quantum-cycles") {
+			quantum_cycles = stoi(value);
+		}
+		else if (key == "batch-process-freq") {
+			batch_process_freq = stoi(value);
+		}
+		else if (key == "min-ins") {
+			min_ins = stoi(value);
+		}
+		else if (key == "max-ins") {
+			max_ins = stoi(value);
+		}
+		else if (key == "delay-per-exec") {
+			delay_per_exec = stoi(value);
+		}
+	}
+
+	cout << "num-cpu: " << num_cpu << endl;
+	cout << "scheduler: " << scheduler_type << endl;
+	cout << "quantum-cycles: " << quantum_cycles << endl;
+	cout << "batch-process-freq: " << batch_process_freq << endl;
+	cout << "min-ins: " << min_ins << endl;
+	cout << "max-ins: " << max_ins << endl;
+	cout << "delay-per-exec: " << delay_per_exec << endl << endl;
+
+	// Close the file
+	ConfigFile.close();
+}
 
 int main() {
 	string command;
 	const vector <string> keywords = { "initialize", "scheduler-test", "scheduler-stop", "report-util" };
 	bool inScreen = false; // new variable to check if a screen is up
+	bool isInitialized = false;
 	vector<BaseScreen> processVector; // list of vectors
 
 	titlePage();
@@ -180,11 +244,16 @@ int main() {
 		cout << "Enter a command: ";
 		getline(cin, command);
 
-		// Command recognized
-		if (correctCommand(keywords, command)) {
+		//require user to initialize
+		if (command == "initialize") {
+			isInitialized = true;
+			readConfigFile();
+			//do file read
+		}
 
-			cout << command << " command recognized. Doing something.\n";
-
+		//blocks all commands if not initialized
+		else if (isInitialized == false) {
+			cout << "Please initialize the scheduler first.\n";
 		}
 		else if (command == "screen -ls") {
 			cout << "Cores Used: " << 4 - countAvailCores() << endl;

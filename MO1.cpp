@@ -29,6 +29,7 @@ int currentPID = 1;
 int cpuCycles = 0;
 mutex mtx;
 queue<BaseScreen> readyQueue;
+vector<BaseScreen> processVector;
 vector<bool> coresAvailable;
 vector<shared_ptr<Process>> runningProcesses;
 vector<shared_ptr<Process>> finishedProcesses;
@@ -192,6 +193,8 @@ void cpuWorker(int coreId) {
 }
 
 void scheduler() {
+	int delayCounter = 0;
+
 	while (true) {
 		// Check if there are available cores
 		for (int i = 0; i < num_cpu; ++i) {
@@ -204,12 +207,20 @@ void scheduler() {
 		// Create new process only when scheduler flag is true
 		if (cpuCycles % batch_process_freq == 0 && schedulerRunning == true) {
 			string processName = "screen_" + to_string(currentPID);
-			auto newProcess = make_shared<Process>(currentPID++, processName, getNumOfInstructions());
-			readyQueue.push(BaseScreen(processName, newProcess->getPID(), newProcess->getLinesOfCode()));
+			BaseScreen newScreen = BaseScreen(processName, currentPID++, getNumOfInstructions());
+			readyQueue.push(newScreen);
+			processVector.push_back(newScreen);	
 		}
-
-		this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
-		cpuCycles++;
+		
+		// Delay and delay_per_exec logic
+		do {
+			this_thread::sleep_for(chrono::milliseconds(500));
+			cpuCycles++;
+			delayCounter++;
+		} while (delayCounter < delay_per_exec);
+		
+		if (delayCounter >= delay_per_exec) 
+			delayCounter = 0;
 	}
 }
 
@@ -272,7 +283,7 @@ int main() {
 	const vector <string> keywords = { "initialize", "scheduler-test", "scheduler-stop", "report-util" };
 	bool inScreen = false; // new variable to check if a screen is up
 	bool isInitialized = false;
-	vector<BaseScreen> processVector; // list of vectors
+	 // list of vectors
 
 	titlePage();
 	introMessage();

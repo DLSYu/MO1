@@ -1,0 +1,17 @@
+Cores Used: 0
+Cores Available: 4
+--------------------------------------------------------------------
+Running Processes: 
+
+Finished Processes: 
+screen_1     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+screen_2     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+screen_4     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+screen_3     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+screen_5     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+screen_6     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+screen_7     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+screen_8     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+screen_10     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+screen_9     (11/03/2024 02:50:30 PM)     Finished     100 / 100
+--------------------------------------------------------------------

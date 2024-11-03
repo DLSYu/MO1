@@ -272,6 +272,25 @@ int main() {
 			}
 			cout << "--------------------------------------------------------------------" << endl;
 		}
+		else if (command == "report-util") {
+			ofstream logFile("csopesy-log.txt");
+			logFile << "Cores Used: " << 4 - countAvailCores() << endl;
+			logFile << "Cores Available: " << countAvailCores() << endl;
+			logFile << "--------------------------------------------------------------------" << endl;
+			logFile << "Running Processes: " << endl;
+			for (const auto& process : runningProcesses) {
+				logFile << process->getName() << "     (" << process->getTimeCreated() << ")     "
+					<< "Core: " << process->getCPUCoreID()
+					<< "     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
+			}
+			logFile << "\nFinished Processes: " << endl;
+			for (const auto& process : finishedProcesses) {
+				logFile << process->getName() << "     (" << process->getTimeCreated() << ")     "
+					<< "Finished     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
+			}
+			logFile << "--------------------------------------------------------------------" << endl;
+			logFile.close();
+		}
 		else if (command == "scheduler") {
 			// Creating some test processes
 			cout << "Creating 5 test processes...\n";

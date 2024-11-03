@@ -382,6 +382,9 @@ int main() {
 				if (index == -1) {
 					cout << "Screen not found." << endl;
 				}
+				else if (processVector.at(index).getProcess()->getProcessState() == Process::FINISHED) {
+					cout << "Process has finished." << endl;
+				}
 				else {
 					inScreen = true;
 					system("cls");

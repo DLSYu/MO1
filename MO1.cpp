@@ -25,7 +25,6 @@ int delay_per_exec;
 
 // Global Variables
 bool schedulerRunning = false;
-bool isFirstSchedulerRun = true;
 int currentPID = 1;
 int cpuCycles = 0;
 mutex mtx;
@@ -67,6 +66,7 @@ void createProcessScreen(std::string processName, std::vector<BaseScreen>& vecto
 	BaseScreen newScreen = BaseScreen(screenName, currentPID, getNumOfInstructions());
 	currentPID++;
 	vector.push_back(newScreen);
+	readyQueue.push(newScreen);
 }
 
 /**
@@ -168,7 +168,7 @@ void scheduler() {
 			}
 		}
 
-		// Create new process only if there are available cores
+		// Create new process only when scheduler flag is true
 		if (cpuCycles % batch_process_freq == 0 && schedulerRunning == true) {
 			string processName = "screen_" + to_string(currentPID);
 			auto newProcess = make_shared<Process>(currentPID++, processName, getNumOfInstructions());
@@ -253,6 +253,9 @@ int main() {
 		if (command == "initialize") {
 			isInitialized = true;
 			readConfigFile();
+			// start scheduler
+			thread schedulerThread(scheduler);
+			schedulerThread.detach();
 			//do file read
 			cout << "Configuration has been read" << endl;
 			cout << endl;
@@ -303,14 +306,6 @@ int main() {
 			if (!schedulerRunning) {
 				//flag to make new based on cpu cycle
 				schedulerRunning = true;
-
-				// stops from creating new threads
-				if (isFirstSchedulerRun){
-					thread schedulerThread(scheduler);
-					schedulerThread.detach();
-					isFirstSchedulerRun = false;
-				}
-
 				cout << "Scheduler started...\n";
 			}
 			else {

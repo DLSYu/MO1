@@ -137,22 +137,55 @@ void cpuWorker(int coreId) {
 		}
 
 		if (hasProcess) {
-			process->initializeCommands();
-			for (int i = 1; i <= process->getCommandCounter(); i++) {
-				process->setCurrLine(i);
-				this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));  // add delay
-				process->executeCommand();
+			if (scheduler_type == "fcfs") {
+				process->initializeCommands();
+				for (int i = 1; i <= process->getCommandCounter(); i++) {
+					process->setCurrLine(i);
+					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));  // add delay
+					process->executeCommand();
+				}
+
+				process->setState(Process::FINISHED);
+
+				// Mark core as available
+				{
+					lock_guard<mutex> lock(mtx);
+					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+					finishedProcesses.push_back(process);
+					coresAvailable[coreId] = true;
+				}
+			}
+			else if (scheduler_type == "rr") {
+				process->initializeCommands();
+				int remainingCommands = process->getRemainingCommands();
+				bool toBeFinished = remainingCommands <= quantum_cycles ? true : false;
+				int timeSlice = toBeFinished ? remainingCommands : quantum_cycles;
+
+				for (int i = 1; i <= timeSlice; i++) {
+					int currLine = process->getCurrLine() + 1;
+					process->setCurrLine(currLine);
+					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));  // add delay
+					process->executeCommand();
+				}
+				Process::ProcessState state = toBeFinished ? Process::FINISHED : Process::WAITING;
+				process->setState(state);
+
+				// Mark core as available
+				{
+					lock_guard<mutex> lock(mtx);
+					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+					if (state == Process::FINISHED) {
+						finishedProcesses.push_back(process);
+						// TODO: remove process from readyQueue?
+					}
+					else {
+						//TODO: am i queuing it right???
+						readyQueue.push(BaseScreen(process->getName(), process->getPID(), process->getLinesOfCode()));
+					}
+					coresAvailable[coreId] = true;
+				}
 			}
 
-			process->setState(Process::FINISHED);
-
-			// Mark core as available
-			{
-				lock_guard<mutex> lock(mtx);
-				runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-				finishedProcesses.push_back(process);
-				coresAvailable[coreId] = true;
-			}
 		}
 
 	}

@@ -28,6 +28,7 @@ bool schedulerRunning = false;
 int currentPID = 1;
 int cpuCycles = 0;
 mutex mtx;
+condition_variable cv;
 queue<shared_ptr<BaseScreen>> readyQueue;
 vector<shared_ptr<BaseScreen>> processVector;
 vector<bool> coresAvailable;
@@ -126,8 +127,9 @@ void cpuWorker(int coreId) {
 		bool hasProcess = false;
 
 		{
-			lock_guard<mutex> lock(mtx);
-	
+			unique_lock<std::mutex> lock(mtx);
+			cv.wait(lock, [coreId] { return !readyQueue.empty() || !schedulerRunning; });
+
 			if (!readyQueue.empty()) {
 				// Get a shared pointer to BaseScreen from readyQueue
 				baseScreen = readyQueue.front();
@@ -146,6 +148,7 @@ void cpuWorker(int coreId) {
 		}
 
 		if (hasProcess) {
+			/*	cout << "Being processed" << endl;*/
 			process->initializeCommands();
 
 			if (scheduler_type == "rr") {
@@ -225,13 +228,18 @@ void cpuWorker(int coreId) {
 }
 
 void scheduler() {
+	vector<std::thread> workerThreads;
+	for (int i = 0; i < num_cpu; ++i) {
+		workerThreads.emplace_back(cpuWorker, i);
+	}
+
 	while (true) {
-		for (int i = 0; i < num_cpu; ++i) {
+		/*for (int i = 0; i < num_cpu; ++i) {
 			if (coresAvailable[i] && !readyQueue.empty()) {
 				thread cpuThread(cpuWorker, i);
 				cpuThread.detach();
 			}
-		}
+		}*/
 
 		// Create new process only when scheduler flag is true
 		if (cpuCycles % batch_process_freq == 0 && schedulerRunning == true) {
@@ -244,6 +252,7 @@ void scheduler() {
 				unique_lock<std::mutex> lock(mtx);
 				readyQueue.push(newScreen);          // Add to readyQueue as shared_ptr
 				processVector.push_back(newScreen);  // Also store in processVector as shared_ptr
+				cv.notify_one();
 			}
 		}
 
@@ -391,8 +400,8 @@ int main() {
 			}
 		}
 		else if (command == "report-util") {
+			lock_guard<mutex> lock(mtx);
 			{
-        lock_guard<mutex> lock(mtx);
 				ofstream logFile("csopesy-log.txt");
 				cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
 				logFile << "Cores Used: " << 4 - countAvailCores() << endl;

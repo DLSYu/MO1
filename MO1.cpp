@@ -170,11 +170,15 @@ void cpuWorker(int coreId) {
 					}
 				}
 
-
 				// check if process not complete
 				if (process->getCurrLine() >= process->getLinesOfCode()) {
 					lock_guard<mutex> lock(mtx);
-					process->setState(Process::FINISHED);
+					{
+						process->setState(Process::FINISHED);
+						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+						finishedProcesses.push_back(process);
+					}
+
 				}
 				//if process complete
 				else {
@@ -199,15 +203,18 @@ void cpuWorker(int coreId) {
 					cpuCycles++;
 				}
 
-				process->setState(Process::FINISHED);
+				{
+					lock_guard<mutex> lock(mtx);
+					process->setState(Process::FINISHED);
+					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+					finishedProcesses.push_back(process);
+				}
 			}
 
 			lock_guard<mutex> lock(mtx);
-			if (process->getProcessState() == Process::FINISHED) {
-				runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-				finishedProcesses.push_back(process);
+			{
+				coresAvailable[coreId] = true;
 			}
-			coresAvailable[coreId] = true;
 		}
 	}
 }
@@ -309,7 +316,13 @@ int main() {
 	const vector <string> keywords = { "initialize", "scheduler-test", "scheduler-stop", "report-util" };
 	bool inScreen = false; // new variable to check if a screen is up
 	bool isInitialized = false;
-	// list of vectors
+	
+	const int screenNameWidth = 13;
+	const int dateWidth = 26;
+	const int coreWidth = 4;
+	const int commandsWidth = 15;
+	const int statusWidth = 13;
+
 
 	titlePage();
 	introMessage();
@@ -344,14 +357,28 @@ int main() {
 			cout << "--------------------------------------------------------------------" << endl;
 			cout << "Running Processes: " << endl;
 			for (const auto& process : runningProcesses) {
-				cout << process->getName() << "     (" << process->getTimeCreated() << ")     "
-					<< "Core: " << process->getCPUCoreID()
-					<< "     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
+				cout << left << setw(screenNameWidth) << process->getName()
+					<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
+					<< setw(coreWidth) << "Core: " << process->getCPUCoreID()
+					<< right << setw(commandsWidth) << process->getCurrLine()
+					<< " / " << process->getLinesOfCode()
+					<< endl;
+
+				cout << left;
 			}
+
 			cout << "\nFinished Processes: " << endl;
+
 			for (const auto& process : finishedProcesses) {
-				cout << process->getName() << "     (" << process->getTimeCreated() << ")     "
-					<< "Finished     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
+				cout << left << setw(screenNameWidth) << process->getName()
+					<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
+					<< setw(coreWidth) << "Finished"
+					<< right << setw(commandsWidth) << process->getCurrLine()
+					<< " / " << process->getLinesOfCode()
+					<< endl;
+
+				// Reset to left alignment after the command width
+				cout << left;
 			}
 			cout << "--------------------------------------------------------------------" << endl;
 		}
@@ -362,15 +389,29 @@ int main() {
 			logFile << "Cores Available: " << countAvailCores() << endl;
 			logFile << "--------------------------------------------------------------------" << endl;
 			logFile << "Running Processes: " << endl;
-			for (const auto& process : runningProcesses) {
-				logFile << process->getName() << "     (" << process->getTimeCreated() << ")     "
-					<< "Core: " << process->getCPUCoreID()
-					<< "     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
+			for (const auto& process : finishedProcesses) {
+				logFile << left << setw(screenNameWidth) << process->getName()
+					<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
+					<< setw(coreWidth) << "Finished"
+					<< right << setw(commandsWidth) << process->getCurrLine()
+					<< " / " << process->getLinesOfCode()
+					<< endl;
+
+				// Reset to left alignment after the command width
+				cout << left;
 			}
+
 			logFile << "\nFinished Processes: " << endl;
 			for (const auto& process : finishedProcesses) {
-				logFile << process->getName() << "     (" << process->getTimeCreated() << ")     "
-					<< "Finished     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
+				logFile << left << setw(screenNameWidth) << process->getName()
+					<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
+					<< setw(coreWidth) << "Finished"
+					<< right << setw(commandsWidth) << process->getCurrLine()
+					<< " / " << process->getLinesOfCode()
+					<< endl;
+
+				// Reset to left alignment after the command width
+				cout << left;
 			}
 			logFile << "--------------------------------------------------------------------" << endl;
 			logFile.close();

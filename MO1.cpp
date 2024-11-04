@@ -279,7 +279,12 @@ void readConfigFile() {
 			quantum_cycles = stoi(value);
 		}
 		else if (key == "batch-process-freq") {
-			batch_process_freq = stoi(value);
+			if (stoi(value) <= 0) {
+				cout << "Invalid batch-process-freq value. Setting to default value 1." << endl;
+				batch_process_freq = 1;
+			}
+			else
+				batch_process_freq = stoi(value);
 		}
 		else if (key == "min-ins") {
 			min_ins = stoi(value);

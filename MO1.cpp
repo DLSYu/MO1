@@ -337,6 +337,7 @@ int main() {
 			cout << "Please initialize the scheduler first.\n";
 		}
 		else if (command == "screen -ls") {
+			lock_guard<mutex> lock(mtx);
 			cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
 			cout << "CPU Utilization: " << cpuUtil << "%" << endl;
 			cout << "Cores Used: " << num_cpu - countAvailCores() << endl;
@@ -356,6 +357,7 @@ int main() {
 			cout << "--------------------------------------------------------------------" << endl;
 		}
 		else if (command == "report-util") {
+			lock_guard<mutex> lock(mtx);
 			ofstream logFile("csopesy-log.txt");
 			cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
 			logFile << "Cores Used: " << 4 - countAvailCores() << endl;

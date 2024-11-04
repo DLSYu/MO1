@@ -391,8 +391,8 @@ int main() {
 			}
 		}
 		else if (command == "report-util") {
-			lock_guard<mutex> lock(mtx);
 			{
+        lock_guard<mutex> lock(mtx);
 				ofstream logFile("csopesy-log.txt");
 				cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
 				logFile << "Cores Used: " << 4 - countAvailCores() << endl;

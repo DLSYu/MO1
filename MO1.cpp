@@ -28,8 +28,8 @@ bool schedulerRunning = false;
 int currentPID = 1;
 int cpuCycles = 0;
 mutex mtx;
-queue<BaseScreen> readyQueue;
-vector<BaseScreen> processVector;
+queue<shared_ptr<BaseScreen>> readyQueue;
+vector<shared_ptr<BaseScreen>> processVector;
 vector<bool> coresAvailable;
 vector<shared_ptr<Process>> runningProcesses;
 vector<shared_ptr<Process>> finishedProcesses;
@@ -60,52 +60,53 @@ bool correctPosition(const string& keyword, const string& command) {
 	return command.rfind(keyword, 0) == 0;
 }
 
-//specifically for screen command for creating processes
-void createProcessScreen(std::string processName, std::vector<BaseScreen>& vector) {
-	//create process
+// Specifically for screen command for creating processes
+void createProcessScreen(std::string processName) {
+	// Create process
 	std::string screenName = processName;
-	BaseScreen newScreen = BaseScreen(screenName, currentPID, getNumOfInstructions());
+	auto newScreen = make_shared<BaseScreen>(processName, currentPID, getNumOfInstructions());
 	currentPID++;
-	vector.push_back(newScreen);
+	processVector.push_back(newScreen);
 	readyQueue.push(newScreen);
 }
 
 /**
-* returns the index of the process that matches the key given
+* Returns the index of the process that matches the key given
 * @param string key - name of the process being looked for
 * @param std::vector<Process> vector - list of processes being ran
 * @returns the index. -1 if not found
 */
-int findIndex(std::string key, std::vector<BaseScreen> vector) {
+int findIndex(std::string key, std::vector<shared_ptr<BaseScreen>> vector) {
 	for (int i = 0; i < vector.size(); ++i) {
-		if (vector.at(i) == key)
+		if (vector.at(i)->getProcess()->getName() == key)
 			return i;
-	} return -1;
+	}
+	return -1;
 }
 
 /**
-* simulates the functionalities of an attached screen. takes consideration of
+* Simulates the functionalities of an attached screen. Takes consideration of
 * exiting the screen, or reattaching a new one.
 * @param vector<Process> processVector used to search for the right process
 *
 */
-void attachScreen(vector<BaseScreen> processVector, string processName) {
+void attachScreen(string processName) {
 	system("cls");
 	bool inScreen = true;
 	int index = findIndex(processName, processVector);
-	processVector.at(index).printProcessInfo();
+	processVector.at(index)->printProcessInfo();
 
 	string command;
 	while (inScreen) {
 		cout << "\nroot:\\> ";
 		getline(cin, command);
-		
+
 		cout << endl;
-		//if user wants to attach screen
+		// If user wants to attach screen
 		if (command == "process-smi") {
-			processVector.at(index).printProcessInfo();
+			processVector.at(index)->printProcessInfo();
 		}
-		else if(command == "exit") {
+		else if (command == "exit") {
 			inScreen = false;
 			system("cls");
 			command = "";
@@ -118,25 +119,30 @@ void attachScreen(vector<BaseScreen> processVector, string processName) {
 	}
 }
 
-
 void cpuWorker(int coreId) {
 	while (true) {
 		std::shared_ptr<Process> process = nullptr;
+		std::shared_ptr<BaseScreen> baseScreen = nullptr;
 		bool hasProcess = false;
 
 		{
 			lock_guard<mutex> lock(mtx);
 			if (!readyQueue.empty()) {
-				process = readyQueue.front().getProcess();
+				// Get a shared pointer to BaseScreen from readyQueue
+				baseScreen = readyQueue.front();
 				readyQueue.pop();
-				process->setCPUCoreID(coreId);
-				coresAvailable[coreId] = false;
-				hasProcess = true;
-				process->setState(Process::RUNNING);
-				runningProcesses.push_back(process);
+
+				// Get the Process associated with the BaseScreen
+				process = baseScreen->getProcess();
+				if (process) {
+					process->setCPUCoreID(coreId);
+					coresAvailable[coreId] = false;
+					hasProcess = true;
+					process->setState(Process::RUNNING);
+					runningProcesses.push_back(process);
+				}
 			}
 		}
-
 
 		if (hasProcess) {
 			process->initializeCommands();
@@ -145,7 +151,7 @@ void cpuWorker(int coreId) {
 				int startLine = process->getCurrLine();
 				int endLine = min(startLine + quantum_cycles, process->getCommandCounter());
 
-				// Busy-wait for delays_per_exec cycles
+				// delay-per-exec
 				for (int delay = 0; delay < delay_per_exec; ++delay) {
 					this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
 					{
@@ -154,9 +160,10 @@ void cpuWorker(int coreId) {
 					}
 				}
 
+				// execute start to end commands
 				for (int i = startLine; i <= endLine; ++i) {
 					process->setCurrLine(i);
-					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));  // Add delay
+					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
 					process->executeCommand();
 					{
 						lock_guard<mutex> lock(mtx);
@@ -164,54 +171,48 @@ void cpuWorker(int coreId) {
 					}
 				}
 
+
+				// check if process not complete
 				if (process->getCurrLine() < process->getCommandCounter()) {
-					// Process is not finished, re-add to queue for next round
-					{
-						lock_guard<mutex> lock(mtx);
-						process->setState(Process::WAITING);
-						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-						readyQueue.push(BaseScreen(process->getName(), process->getPID(), process->getCommandCounter() - process->getCurrLine()));
-					}
+					lock_guard<mutex> lock(mtx);
+					process->setState(Process::WAITING);
+					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+					readyQueue.push(baseScreen); // Re-add the BaseScreen back to the queue
 				}
+				//if process complete
 				else {
-					{
-						lock_guard<mutex> lock(mtx);
-						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-						finishedProcesses.push_back(process);
-					}
+					lock_guard<mutex> lock(mtx);
+					cout << "in Finished PROCESS: ";
+					process->setState(Process::FINISHED);
+					cout << "Process " << process->getName() << " has finished." << endl;
+
 				}
 			}
+			// fcfs
 			else {
 				for (int i = 1; i <= process->getCommandCounter(); i++) {
-				
 					for (int delay = 0; delay < delay_per_exec; ++delay) {
-						this_thread::sleep_for(chrono::milliseconds(delay_per_exec)); 
+						this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
 					}
 
 					process->setCurrLine(i);
 					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
 					process->executeCommand();
 
-					{
-						lock_guard<mutex> lock(mtx);
-						cpuCycles++;
-					}
+					lock_guard<mutex> lock(mtx);
+					cpuCycles++;
 				}
 
 				process->setState(Process::FINISHED);
 			}
-			
-			// Mark core as available
-			{
-				lock_guard<mutex> lock(mtx);
-				if (process->getProcessState() == Process::FINISHED) {
-					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-					finishedProcesses.push_back(process);
-				}
-				coresAvailable[coreId] = true;
-			}
-		}
 
+			lock_guard<mutex> lock(mtx);
+			if (process->getProcessState() == Process::FINISHED) {
+				runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+				finishedProcesses.push_back(process);
+			}
+			coresAvailable[coreId] = true;
+		}
 	}
 }
 
@@ -227,12 +228,18 @@ void scheduler() {
 		// Create new process only when scheduler flag is true
 		if (cpuCycles % batch_process_freq == 0 && schedulerRunning == true) {
 			string processName = "screen_" + to_string(currentPID);
-			BaseScreen newScreen = BaseScreen(processName, currentPID++, getNumOfInstructions());
-			readyQueue.push(newScreen);
-			processVector.push_back(newScreen);	
-		}
-		
 
+			// Create new BaseScreen as shared_ptr
+			auto newScreen = make_shared<BaseScreen>(processName, currentPID++, getNumOfInstructions());
+
+			{
+				lock_guard<mutex> lock(mtx);
+				readyQueue.push(newScreen);          // Add to readyQueue as shared_ptr
+				processVector.push_back(newScreen);  // Also store in processVector as shared_ptr
+			}
+		}
+
+		// Sleep to control scheduling frequency
 		this_thread::sleep_for(chrono::milliseconds(100));
 		{
 			lock_guard<mutex> lock(mtx);
@@ -240,6 +247,7 @@ void scheduler() {
 		}
 	}
 }
+
 
 int countAvailCores() {
 	int count = 0;
@@ -256,7 +264,7 @@ void readConfigFile() {
 	string value;
 
 	ifstream ConfigFile("config.txt");
-	
+
 	// Use a while loop together with the getline() function to read the file line by line
 	while (getline(ConfigFile, fileContent)) {
 		// Output the text from the file
@@ -300,7 +308,7 @@ int main() {
 	const vector <string> keywords = { "initialize", "scheduler-test", "scheduler-stop", "report-util" };
 	bool inScreen = false; // new variable to check if a screen is up
 	bool isInitialized = false;
-	 // list of vectors
+	// list of vectors
 
 	titlePage();
 	introMessage();
@@ -348,6 +356,7 @@ int main() {
 		}
 		else if (command == "report-util") {
 			ofstream logFile("csopesy-log.txt");
+			cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
 			logFile << "Cores Used: " << 4 - countAvailCores() << endl;
 			logFile << "Cores Available: " << countAvailCores() << endl;
 			logFile << "--------------------------------------------------------------------" << endl;
@@ -395,28 +404,26 @@ int main() {
 		}
 		// Add new screen command
 		else if (command.substr(0, 6) == "screen") {
-			std::string processName = command.substr(10, command.size());
-			int index = findIndex(processName, processVector);
+			string processName = command.substr(10, command.size());
 			// reattaching existing screen
 			if (command.substr(7, 2) == "-r") {
+				int index = findIndex(processName, processVector);
 				if (index == -1) {
 					cout << "Screen not found." << endl;
 				}
-				else if (processVector.at(index).getProcess()->getProcessState() == Process::FINISHED) {
+				else if (processVector.at(index)->getProcess()->getProcessState() == Process::FINISHED) {
 					cout << "Process has finished." << endl;
 				}
 				else {
 					inScreen = true;
-					system("cls");
-					processVector.at(index).printProcessInfo();
-					attachScreen(processVector, processName);
+					attachScreen(processName);
 				}
 			}
 			// creating a new screen
 			else if (command.substr(7, 2) == "-s") {
 				inScreen = true;
-				createProcessScreen(command.substr(10, command.size()), processVector);
-				attachScreen(processVector, processName);
+				createProcessScreen(processName);
+				attachScreen(processName);
 			}
 		}
 		//for testing

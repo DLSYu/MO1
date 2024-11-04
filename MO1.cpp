@@ -401,6 +401,7 @@ int main() {
 				lock_guard<mutex> lock(mtx);
 				ofstream logFile("csopesy-log.txt");
 				cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
+				logFile << "CPU Utilization: " << cpuUtil << "%" << endl;
 				logFile << "Cores Used: " << num_cpu - countAvailCores() << endl;
 				logFile << "Cores Available: " << countAvailCores() << endl;
 				logFile << "--------------------------------------------------------------------" << endl;

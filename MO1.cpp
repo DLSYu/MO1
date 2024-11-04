@@ -22,7 +22,6 @@ int max_ins;
 int delay_per_exec;
 int cpuUtil;
 
-
 // Global Variables
 bool schedulerRunning = false;
 int currentPID = 1;
@@ -50,6 +49,11 @@ void introMessage() {
 
 int getNumOfInstructions() {
 	return rand() % (max_ins - min_ins + 1) + min_ins;
+}
+
+bool correctCommand(vector <string> keywords, const string& command) {
+	return ranges::find(keywords, command) != keywords.end();
+	/*return find(keywords.front(), keywords.back(), command) != keywords.back()*/
 }
 
 bool correctPosition(const string& keyword, const string& command) {
@@ -242,7 +246,6 @@ void scheduler() {
 
 			// Create new BaseScreen as shared_ptr
 			auto newScreen = make_shared<BaseScreen>(processName, currentPID++, getNumOfInstructions());
-
 			{
 				unique_lock<std::mutex> lock(mtx);
 				readyQueue.push(newScreen);          // Add to readyQueue as shared_ptr
@@ -259,7 +262,6 @@ void scheduler() {
 		}
 	}
 }
-
 
 int countAvailCores() {
 	int count = 0;
@@ -322,6 +324,7 @@ void readConfigFile() {
 
 int main() {
 	string command;
+	const vector <string> keywords = { "initialize", "scheduler-test", "scheduler-stop", "report-util" };
 	bool inScreen = false; // new variable to check if a screen is up
 	bool isInitialized = false;
 
@@ -394,27 +397,25 @@ int main() {
 			}
 		}
 		else if (command == "report-util") {
-			lock_guard<mutex> lock(mtx);
 			{
+				lock_guard<mutex> lock(mtx);
 				ofstream logFile("csopesy-log.txt");
 				cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
-				logFile << "Cores Used: " << 4 - countAvailCores() << endl;
+				logFile << "Cores Used: " << num_cpu - countAvailCores() << endl;
 				logFile << "Cores Available: " << countAvailCores() << endl;
 				logFile << "--------------------------------------------------------------------" << endl;
 				logFile << "Running Processes: " << endl;
-
-				for (const auto& process : finishedProcesses) {
+				for (const auto& process : runningProcesses) {
 					logFile << left << setw(screenNameWidth) << process->getName()
 						<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
-						<< setw(coreWidth) << "Finished"
+						<< setw(coreWidth) << process->getCPUCoreID()
 						<< right << setw(commandsWidth) << process->getCurrLine()
 						<< " / " << process->getLinesOfCode()
 						<< endl;
 
 					// Reset to left alignment after the command width
-					cout << left;
+					logFile << left;
 				}
-
 				logFile << "\nFinished Processes: " << endl;
 				for (const auto& process : finishedProcesses) {
 					logFile << left << setw(screenNameWidth) << process->getName()
@@ -425,7 +426,7 @@ int main() {
 						<< endl;
 
 					// Reset to left alignment after the command width
-					cout << left;
+					logFile << left;
 				}
 				logFile << "--------------------------------------------------------------------" << endl;
 				logFile.close();

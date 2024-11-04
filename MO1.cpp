@@ -408,7 +408,7 @@ int main() {
 				for (const auto& process : runningProcesses) {
 					logFile << left << setw(screenNameWidth) << process->getName()
 						<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
-						<< setw(coreWidth) << process->getCPUCoreID()
+						<< setw(coreWidth) << "Core: " << process->getCPUCoreID()
 						<< right << setw(commandsWidth) << process->getCurrLine()
 						<< " / " << process->getLinesOfCode()
 						<< endl;

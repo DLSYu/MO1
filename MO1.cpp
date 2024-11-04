@@ -52,11 +52,6 @@ int getNumOfInstructions() {
 	return rand() % (max_ins - min_ins + 1) + min_ins;
 }
 
-bool correctCommand(vector <string> keywords, const string& command) {
-	return ranges::find(keywords, command) != keywords.end();
-	/*return find(keywords.front(), keywords.back(), command) != keywords.back()*/
-}
-
 bool correctPosition(const string& keyword, const string& command) {
 	return command.rfind(keyword, 0) == 0;
 }
@@ -327,7 +322,6 @@ void readConfigFile() {
 
 int main() {
 	string command;
-	const vector <string> keywords = { "initialize", "scheduler-test", "scheduler-stop", "report-util" };
 	bool inScreen = false; // new variable to check if a screen is up
 	bool isInitialized = false;
 

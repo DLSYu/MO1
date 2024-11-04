@@ -127,6 +127,7 @@ void cpuWorker(int coreId) {
 
 		{
 			lock_guard<mutex> lock(mtx);
+	
 			if (!readyQueue.empty()) {
 				// Get a shared pointer to BaseScreen from readyQueue
 				baseScreen = readyQueue.front();
@@ -170,18 +171,24 @@ void cpuWorker(int coreId) {
 					}
 				}
 
-
 				// check if process not complete
 				if (process->getCurrLine() >= process->getLinesOfCode()) {
 					lock_guard<mutex> lock(mtx);
-					process->setState(Process::FINISHED);
+					{
+						process->setState(Process::FINISHED);
+						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+						finishedProcesses.push_back(process);
+					}
+
 				}
 				//if process complete
 				else {
-					lock_guard<mutex> lock(mtx);
-					process->setState(Process::WAITING);
-					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-					readyQueue.push(baseScreen); // Re-add the BaseScreen back to the queue
+					{
+						lock_guard<mutex> lock(mtx);
+						process->setState(Process::WAITING);
+						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+						readyQueue.push(baseScreen); // Re-add the BaseScreen back to the queue
+					}
 				}
 			}
 			// fcfs
@@ -195,19 +202,24 @@ void cpuWorker(int coreId) {
 					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
 					process->executeCommand();
 
-					lock_guard<mutex> lock(mtx);
-					cpuCycles++;
+					{
+						lock_guard<mutex> lock(mtx);
+						cpuCycles++;
+					}
 				}
 
-				process->setState(Process::FINISHED);
+				{
+					lock_guard<mutex> lock(mtx);
+					process->setState(Process::FINISHED);
+					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+					finishedProcesses.push_back(process);
+				}
 			}
 
 			lock_guard<mutex> lock(mtx);
-			if (process->getProcessState() == Process::FINISHED) {
-				runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-				finishedProcesses.push_back(process);
+			{
+				coresAvailable[coreId] = true;
 			}
-			coresAvailable[coreId] = true;
 		}
 	}
 }
@@ -229,7 +241,7 @@ void scheduler() {
 			auto newScreen = make_shared<BaseScreen>(processName, currentPID++, getNumOfInstructions());
 
 			{
-				lock_guard<mutex> lock(mtx);
+				unique_lock<std::mutex> lock(mtx);
 				readyQueue.push(newScreen);          // Add to readyQueue as shared_ptr
 				processVector.push_back(newScreen);  // Also store in processVector as shared_ptr
 			}
@@ -309,7 +321,13 @@ int main() {
 	const vector <string> keywords = { "initialize", "scheduler-test", "scheduler-stop", "report-util" };
 	bool inScreen = false; // new variable to check if a screen is up
 	bool isInitialized = false;
-	// list of vectors
+
+	const int screenNameWidth = 13;
+	const int dateWidth = 26;
+	const int coreWidth = 4;
+	const int commandsWidth = 15;
+	const int statusWidth = 13;
+
 
 	titlePage();
 	introMessage();
@@ -337,45 +355,78 @@ int main() {
 			cout << "Please initialize the scheduler first.\n";
 		}
 		else if (command == "screen -ls") {
-			lock_guard<mutex> lock(mtx);
-			cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
-			cout << "CPU Utilization: " << cpuUtil << "%" << endl;
-			cout << "Cores Used: " << num_cpu - countAvailCores() << endl;
-			cout << "Cores Available: " << countAvailCores() << endl;
-			cout << "--------------------------------------------------------------------" << endl;
-			cout << "Running Processes: " << endl;
-			for (const auto& process : runningProcesses) {
-				cout << process->getName() << "     (" << process->getTimeCreated() << ")     "
-					<< "Core: " << process->getCPUCoreID()
-					<< "     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
+			{
+				lock_guard<mutex> lock(mtx);
+				cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
+				cout << "CPU Utilization: " << cpuUtil << "%" << endl;
+				cout << "Cores Used: " << num_cpu - countAvailCores() << endl;
+				cout << "Cores Available: " << countAvailCores() << endl;
+				cout << "--------------------------------------------------------------------" << endl;
+				cout << "Running Processes: " << endl;
+				for (const auto& process : runningProcesses) {
+					cout << left << setw(screenNameWidth) << process->getName()
+						<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
+						<< setw(coreWidth) << "Core: " << process->getCPUCoreID()
+						<< right << setw(commandsWidth) << process->getCurrLine()
+						<< " / " << process->getLinesOfCode()
+						<< endl;
+
+					cout << left;
+				}
+
+				cout << "\nFinished Processes: " << endl;
+
+				for (const auto& process : finishedProcesses) {
+					cout << left << setw(screenNameWidth) << process->getName()
+						<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
+						<< setw(coreWidth) << "Finished"
+						<< right << setw(commandsWidth) << process->getCurrLine()
+						<< " / " << process->getLinesOfCode()
+						<< endl;
+
+					// Reset to left alignment after the command width
+					cout << left;
+				}
+				cout << "--------------------------------------------------------------------" << endl;
 			}
-			cout << "\nFinished Processes: " << endl;
-			for (const auto& process : finishedProcesses) {
-				cout << process->getName() << "     (" << process->getTimeCreated() << ")     "
-					<< "Finished     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
-			}
-			cout << "--------------------------------------------------------------------" << endl;
 		}
 		else if (command == "report-util") {
-			lock_guard<mutex> lock(mtx);
-			ofstream logFile("csopesy-log.txt");
-			cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
-			logFile << "Cores Used: " << 4 - countAvailCores() << endl;
-			logFile << "Cores Available: " << countAvailCores() << endl;
-			logFile << "--------------------------------------------------------------------" << endl;
-			logFile << "Running Processes: " << endl;
-			for (const auto& process : runningProcesses) {
-				logFile << process->getName() << "     (" << process->getTimeCreated() << ")     "
-					<< "Core: " << process->getCPUCoreID()
-					<< "     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
+			{
+        lock_guard<mutex> lock(mtx);
+				ofstream logFile("csopesy-log.txt");
+				cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
+				logFile << "Cores Used: " << 4 - countAvailCores() << endl;
+				logFile << "Cores Available: " << countAvailCores() << endl;
+				logFile << "--------------------------------------------------------------------" << endl;
+				logFile << "Running Processes: " << endl;
+
+				for (const auto& process : finishedProcesses) {
+					logFile << left << setw(screenNameWidth) << process->getName()
+						<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
+						<< setw(coreWidth) << "Finished"
+						<< right << setw(commandsWidth) << process->getCurrLine()
+						<< " / " << process->getLinesOfCode()
+						<< endl;
+
+					// Reset to left alignment after the command width
+					cout << left;
+				}
+
+				logFile << "\nFinished Processes: " << endl;
+				for (const auto& process : finishedProcesses) {
+					logFile << left << setw(screenNameWidth) << process->getName()
+						<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
+						<< setw(coreWidth) << "Finished"
+						<< right << setw(commandsWidth) << process->getCurrLine()
+						<< " / " << process->getLinesOfCode()
+						<< endl;
+
+					// Reset to left alignment after the command width
+					cout << left;
+				}
+				logFile << "--------------------------------------------------------------------" << endl;
+				logFile.close();
 			}
-			logFile << "\nFinished Processes: " << endl;
-			for (const auto& process : finishedProcesses) {
-				logFile << process->getName() << "     (" << process->getTimeCreated() << ")     "
-					<< "Finished     " << process->getCurrLine() << " / " << process->getLinesOfCode() << endl;
-			}
-			logFile << "--------------------------------------------------------------------" << endl;
-			logFile.close();
 		}
 		else if (command == "scheduler-test") {
 			// Creating some test processes

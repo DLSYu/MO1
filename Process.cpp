@@ -15,27 +15,27 @@ void Process::addCommand(ICommand::CommandType command) { // setting cid to 0 mu
 
 void Process::executeCommand() {
 	// if print
-	auto printCmd = dynamic_pointer_cast<PrintCommand>(commandList.back());
-	ofstream logFile;
-	string filename = processName + ".txt";
+	//auto printCmd = dynamic_pointer_cast<PrintCommand>(commandList.back());
+	//ofstream logFile;
+	//string filename = processName + ".txt";
 
-	// Check if the file already exists
-	bool headersWritten = fileExists(filename);
+	//// Check if the file already exists
+	//bool headersWritten = fileExists(filename);
 
-	logFile.open(filename, ios_base::app);
-	if (logFile.is_open()) {
-		// Write headers only if the file is new
-		if (!headersWritten) {
-			logFile << "Process name: " << processName << endl
-				<< "Logs: " << endl << endl;
-		}
+	//logFile.open(filename, ios_base::app);
+	//if (logFile.is_open()) {
+	//	// Write headers only if the file is new
+	//	if (!headersWritten) {
+	//		logFile << "Process name: " << processName << endl
+	//			<< "Logs: " << endl << endl;
+	//	}
 
-		logFile << "(" << getCurrentTime() << ")"
-			<< "  " << "Core: " << cpuCore
-			<< "  \"" << printCmd->getToPrint() << "\"" << endl;
+	//	logFile << "(" << getCurrentTime() << ")"
+	//		<< "  " << "Core: " << cpuCore
+	//		<< "  \"" << printCmd->getToPrint() << "\"" << endl;
 
-		logFile.close();
-	}
+	//	logFile.close();
+	//}
 
 	commandList.back()->execute();
 	commandList.pop_back();

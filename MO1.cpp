@@ -149,8 +149,7 @@ void cpuWorker(int coreId) {
 
 			if (scheduler_type == "rr") {
 				int startLine = process->getCurrLine();
-				int endLine = min(startLine + quantum_cycles, process->getCommandCounter());
-
+				int endLine = min(startLine + quantum_cycles, process->getLinesOfCode());
 				// delay-per-exec
 				for (int delay = 0; delay < delay_per_exec; ++delay) {
 					this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
@@ -162,9 +161,9 @@ void cpuWorker(int coreId) {
 
 				// execute start to end commands
 				for (int i = startLine; i <= endLine; ++i) {
-					process->setCurrLine(i);
-					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
 					process->executeCommand();
+					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
+					process->setCurrLine(i);
 					{
 						lock_guard<mutex> lock(mtx);
 						cpuCycles++;
@@ -173,19 +172,16 @@ void cpuWorker(int coreId) {
 
 
 				// check if process not complete
-				if (process->getCurrLine() < process->getCommandCounter()) {
+				if (process->getCurrLine() >= process->getLinesOfCode()) {
 					lock_guard<mutex> lock(mtx);
-					process->setState(Process::WAITING);
-					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-					readyQueue.push(baseScreen); // Re-add the BaseScreen back to the queue
+					process->setState(Process::FINISHED);
 				}
 				//if process complete
 				else {
 					lock_guard<mutex> lock(mtx);
-					cout << "in Finished PROCESS: ";
-					process->setState(Process::FINISHED);
-					cout << "Process " << process->getName() << " has finished." << endl;
-
+					process->setState(Process::WAITING);
+					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+					readyQueue.push(baseScreen); // Re-add the BaseScreen back to the queue
 				}
 			}
 			// fcfs

@@ -5,7 +5,7 @@
 #include <fstream>
 using namespace std;
 
-Process::Process(int pid, string processName, int linesOfCode)
+Process::Process(int pid, string processName, int linesOfCode, int mem_per_proc)
 	:pid(pid), processName(processName), cpuCore(-1), commandCounter(0), linesOfCode(linesOfCode),
 	remainingTime(0), processState(READY), currLine(1), timeCreated(getCurrentTime()) {}
 

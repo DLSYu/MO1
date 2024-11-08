@@ -129,165 +129,149 @@ void attachScreen(string processName) {
 }
 
 void memoryFile(int cycle) {
-
 	lock_guard<mutex> lock(mtx);
 	string fileName = "memory-log" + to_string(cycle) + ".txt";
 	ofstream logFile(fileName);
-	
-	logFile << "Timestamp:" << endl;
+	Process tempProcess(0, "temp", 0, 0);
+
+	logFile << "Timestamp:" << tempProcess.getCurrentTime() << endl;
 	logFile << "Number of processes in memory: " << memoryProcesses.size() << endl;
 	logFile << "Total external fragmentation in KB: " << ((max_overall_mem / mem_per_proc) - memoryProcesses.size()) * mem_per_proc << endl;
 	logFile << "---------------------------------end-------------------------------- = " << max_overall_mem << endl;
-	logFile << "Running Processes: " << endl;
-	//for (const auto& process : runningProcesses) {
-	//	logFile << left << setw(screenNameWidth) << process->getName()
-	//		<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
-	//		<< setw(coreWidth) << "Core: " << process->getCPUCoreID()
-	//		<< right << setw(commandsWidth) << process->getCurrLine()
-	//		<< " / " << process->getLinesOfCode()
-	//		<< endl;
 
-	//	// Reset to left alignment after the command width
-	//	logFile << left;
-	//}
-	//logFile << "\nFinished Processes: " << endl;
-	//for (const auto& process : finishedProcesses) {
-	//	logFile << left << setw(screenNameWidth) << process->getName()
-	//		<< setw(dateWidth) << "(" + process->getTimeCreated() + ")"
-	//		<< setw(coreWidth) << "Finished"
-	//		<< right << setw(commandsWidth) << process->getCurrLine()
-	//		<< " / " << process->getLinesOfCode()
-	//		<< endl;
-
-	//	// Reset to left alignment after the command width
-	//	logFile << left;
-	//}
-	logFile << "--------------------------------start------------------------------- = 0" << endl;
+	int currentAddress = max_overall_mem;
+	for (auto it = memoryProcesses.begin(); it != memoryProcesses.end(); ++it) {
+		logFile << currentAddress << endl;
+		logFile << "Process: " << (*it)->getName() << endl;
+		currentAddress -= mem_per_proc;
+	}
+	while (currentAddress > 0) {
+		logFile << currentAddress << endl;
+		currentAddress -= mem_per_proc;
+	}
+	logFile << "-------------------------------start-------------------------------- = 0" << endl;
 	logFile.close();
 }
+
+
 
 void cpuWorker(int coreId) {
 	while (true) {
 		std::shared_ptr<Process> process = nullptr;
 		std::shared_ptr<BaseScreen> baseScreen = nullptr;
 		bool hasProcess = false;
-		bool hasMemory = true;
 
-		//if (spaceInMemory()) {
+		{
+			unique_lock<std::mutex> lock(mtx);
+			cv.wait(lock, [coreId] { return !readyQueue.empty() || !schedulerRunning; });
 
-		
-			{
-				unique_lock<std::mutex> lock(mtx);
-				cv.wait(lock, [coreId] { return !readyQueue.empty() || !schedulerRunning; });
+			if (!readyQueue.empty()) {
+				// Get a shared pointer to BaseScreen from readyQueue
+				baseScreen = readyQueue.front();
+				readyQueue.pop();
 
-				if (!readyQueue.empty()) {
-					// Get a shared pointer to BaseScreen from readyQueue
-					baseScreen = readyQueue.front();
-					readyQueue.pop();
+				// Get the Process associated with the BaseScreen
+				process = baseScreen->getProcess();
 
-					// Get the Process associated with the BaseScreen
-					process = baseScreen->getProcess();
+				// Check if there is space in memory or if the process is already in memory
+				if (spaceInMemory() || std::find(memoryProcesses.begin(), memoryProcesses.end(), process) != memoryProcesses.end()) {
+					if (process) {
+						process->setCPUCoreID(coreId);
+						coresAvailable[coreId] = false;
+						hasProcess = true;
+						process->setState(Process::RUNNING);
+						runningProcesses.push_back(process);
 
-					//if (spaceInMemory()) {
-					//	hasMemory = true;
-						if (process) {
-							process->setCPUCoreID(coreId);
-							coresAvailable[coreId] = false;
-							hasProcess = true;
-							process->setState(Process::RUNNING);
-							runningProcesses.push_back(process);
+						// Add to memoryProcesses if not already present
+						if (std::find(memoryProcesses.begin(), memoryProcesses.end(), process) == memoryProcesses.end()) {
 							memoryProcesses.push_back(process);
 						}
-					//}
-					//else {
-					//	readyQueue.push(baseScreen);
-					//	hasMemory = false;
-					//}
+					}
+				}
+				else {
+					// If no space in memory, re-add the BaseScreen back to the queue
+					readyQueue.push(baseScreen);
 				}
 			}
+		}
 
-			if (hasProcess) {
-				/*	cout << "Being processed" << endl;*/
-				process->initializeCommands();
+		if (hasProcess) {
+			process->initializeCommands();
 
-				if (scheduler_type == "rr") {
-					int startLine = process->getCurrLine();
-					int endLine = min(startLine + quantum_cycles, process->getLinesOfCode());
-					// delay-per-exec
-					for (int delay = 0; delay < delay_per_exec; ++delay) {
-						this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
-						{
-							lock_guard<mutex> lock(mtx);
-							cpuCycles++;
-						}
-					}
+			if (scheduler_type == "rr") {
+				int startLine = process->getCurrLine();
+				int endLine = min(startLine + quantum_cycles, process->getLinesOfCode());
 
-					// execute start to end commands
-					for (int i = startLine; i <= endLine; ++i) {
-						process->executeCommand();
-						this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
-						process->setCurrLine(i);
-						{
-							lock_guard<mutex> lock(mtx);
-							cpuCycles++;
-						}
-					}
-
-					// check if process complete
-					if (process->getCurrLine() >= process->getLinesOfCode()) {
-						lock_guard<mutex> lock(mtx);
-						{
-							process->setState(Process::FINISHED);
-							runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-							memoryProcesses.erase(remove(memoryProcesses.begin(), memoryProcesses.end(), process), memoryProcesses.end());
-							finishedProcesses.push_back(process);
-						}
-
-					}
-					//if process not complete
-					else {
-						{
-							lock_guard<mutex> lock(mtx);
-							process->setState(Process::WAITING);
-							runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-							readyQueue.push(baseScreen); // Re-add the BaseScreen back to the queue
-						}
-					}
-					if (cpuCycles < 500) {
-						memoryFile(cpuCycles);
-					}
-				}
-				// fcfs
-				else {
-					for (int i = 1; i <= process->getCommandCounter(); i++) {
-						for (int delay = 0; delay < delay_per_exec; ++delay) {
-							this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
-						}
-
-						process->setCurrLine(i);
-						this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
-						process->executeCommand();
-
-						{
-							lock_guard<mutex> lock(mtx);
-							cpuCycles++;
-						}
-					}
-
+				for (int delay = 0; delay < delay_per_exec; ++delay) {
+					this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
 					{
 						lock_guard<mutex> lock(mtx);
+						cpuCycles++;
+					}
+				}
+
+				for (int i = startLine; i <= endLine; ++i) {
+					process->executeCommand();
+					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
+					process->setCurrLine(i);
+					{
+						lock_guard<mutex> lock(mtx);
+						cpuCycles++;
+					}
+				}
+
+				if (process->getCurrLine() >= process->getLinesOfCode()) {
+					lock_guard<mutex> lock(mtx);
+					{
 						process->setState(Process::FINISHED);
 						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+						memoryProcesses.erase(remove(memoryProcesses.begin(), memoryProcesses.end(), process), memoryProcesses.end());
 						finishedProcesses.push_back(process);
 					}
 				}
-
-				lock_guard<mutex> lock(mtx);
-				{
-					coresAvailable[coreId] = true;
+				else {
+					{
+						lock_guard<mutex> lock(mtx);
+						process->setState(Process::WAITING);
+						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+						readyQueue.push(baseScreen);
+					}
+				}
+				if (cpuCycles < 500) {
+					memoryFile(cpuCycles);
 				}
 			}
-		//}
+			// fcfs
+			else {
+				for (int i = 1; i <= process->getCommandCounter(); i++) {
+					for (int delay = 0; delay < delay_per_exec; ++delay) {
+						this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
+					}
+
+					process->setCurrLine(i);
+					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
+					process->executeCommand();
+
+					{
+						lock_guard<mutex> lock(mtx);
+						cpuCycles++;
+					}
+				}
+
+				{
+					lock_guard<mutex> lock(mtx);
+					process->setState(Process::FINISHED);
+					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+					memoryProcesses.erase(remove(memoryProcesses.begin(), memoryProcesses.end(), process), memoryProcesses.end());
+					finishedProcesses.push_back(process);
+				}
+			}
+
+			lock_guard<mutex> lock(mtx);
+			{
+				coresAvailable[coreId] = true;
+			}
+		}
 	}
 }
 

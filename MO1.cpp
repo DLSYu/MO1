@@ -181,7 +181,6 @@ void cpuWorker(int coreId) {
 				// Check if there is space in memory or if the process is already in memory
 				//	get ptr from memoryAllocator->allocate(process->getMemPerProc())
 				// 	put that variable in the if condition below
-
 				if (void* memPtr = memoryAllocator->allocate(process->getMemPerProc())) {
 					if (process) {
 						// Set the memory pointer
@@ -195,6 +194,7 @@ void cpuWorker(int coreId) {
 				}
 				else {
 					// If no space in memory, re-add the BaseScreen back to the queue
+					//cout << "No space in memory for process " << process->getName() << endl;
 					readyQueue.push(baseScreen);
 				}
 			}
@@ -238,15 +238,16 @@ void cpuWorker(int coreId) {
 				else {
 					{
 						lock_guard<mutex> lock(mtx);
-						process->setState(Process::WAITING);
+						process->setState(Process::READY);
 						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
+						memoryAllocator->deallocate(process->getMemoryPointer(), process->getMemPerProc()); // Corrected line
 						readyQueue.push(baseScreen);
 					}
 				}
 			}
 			else {
 				// fcfs
-				for (int i = process->getCurrLine(); i < process->getLinesOfCode(); ++i) {
+				for (int i = process->getCurrLine(); i <= process->getLinesOfCode(); ++i) {
 					for (int delay = 0; delay < delay_per_exec; ++delay) {
 						this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
 					}
@@ -315,6 +316,7 @@ void scheduler() {
 			lock_guard<mutex> lock(mtx);
 			cpuCycles++;
 		}
+		
 	}
 }
 

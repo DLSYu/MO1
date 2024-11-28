@@ -3,6 +3,8 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <mutex>
+#include <iostream>
 
 class FlatMemoryAllocator {
 public:
@@ -11,15 +13,16 @@ public:
     void* allocate(size_t size);
     void deallocate(void* ptr, size_t size);
     std::string visualizeMemory();
+    bool canAllocateAt(size_t index, size_t size) const;
 
 private:
     size_t maximumSize;
     size_t allocatedSize;
     std::vector<char> memory;
     std::unordered_map<size_t, size_t> allocationMap;
+    std::mutex mtx;
 
     void initializeMemory();
-    bool canAllocateAt(size_t index, size_t size) const;
     void allocateAt(size_t index, size_t size);
     void deallocateAt(size_t index, size_t size);
 };

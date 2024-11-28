@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "BaseScreen.h"
+#include "FlatMemoryAllocator.h"
 
 using namespace std;
 
@@ -26,7 +27,9 @@ int mem_per_frame;
 int min_mem_per_proc;
 int max_mem_per_proc;
 
+// Memory Thigns
 string memoryManager = "";
+FlatMemoryAllocator* memoryAllocator;
 
 // Global Variables
 bool schedulerRunning = false;
@@ -39,7 +42,7 @@ vector<shared_ptr<BaseScreen>> processVector;
 vector<bool> coresAvailable;
 vector<shared_ptr<Process>> runningProcesses;
 vector<shared_ptr<Process>> finishedProcesses;
-vector<shared_ptr<Process>> memoryProcesses;
+
 
 void titlePage() {
 	cout << "  ____ ____   ___  ____  _____ ______   __" << endl;
@@ -59,17 +62,13 @@ int getNumOfInstructions() {
 }
 
 int getRandomMemPerProc() {
-	return rand() % (max_mem_per_proc - min_mem_per_proc + 1) + min_mem_per_proc;
+	int value = rand() % (max_mem_per_proc - min_mem_per_proc + 1) + min_mem_per_proc;
+	return value;
 }
 
 bool correctCommand(vector <string> keywords, const string& command) {
 	return ranges::find(keywords, command) != keywords.end();
 	/*return find(keywords.front(), keywords.back(), command) != keywords.back()*/
-}
-
-bool spaceInMemory(int mem_per_proc) {
-	int maxMemProcs = max_overall_mem / mem_per_proc;
-	return memoryProcesses.size() < maxMemProcs;
 }
 
 bool correctPosition(const string& keyword, const string& command) {
@@ -179,20 +178,19 @@ void cpuWorker(int coreId) {
 
 				// Get the Process associated with the BaseScreen
 				process = baseScreen->getProcess();
-
 				// Check if there is space in memory or if the process is already in memory
-				if (spaceInMemory(process->getMemPerProc()) || std::find(memoryProcesses.begin(), memoryProcesses.end(), process) != memoryProcesses.end()) {
+				//	get ptr from memoryAllocator->allocate(process->getMemPerProc())
+				// 	put that variable in the if condition below
+
+				if (void* memPtr = memoryAllocator->allocate(process->getMemPerProc())) {
 					if (process) {
+						// Set the memory pointer
+						process->setMemoryPointer(memPtr);
 						process->setCPUCoreID(coreId);
 						coresAvailable[coreId] = false;
 						hasProcess = true;
 						process->setState(Process::RUNNING);
 						runningProcesses.push_back(process);
-
-						// Add to memoryProcesses if not already present
-						if (std::find(memoryProcesses.begin(), memoryProcesses.end(), process) == memoryProcesses.end()) {
-							memoryProcesses.push_back(process);
-						}
 					}
 				}
 				else {
@@ -206,6 +204,7 @@ void cpuWorker(int coreId) {
 			process->initializeCommands();
 
 			if (scheduler_type == "rr") {
+				// Round Robin scheduling
 				int startLine = process->getCurrLine();
 				int endLine = min(startLine + quantum_cycles, process->getLinesOfCode());
 
@@ -232,7 +231,7 @@ void cpuWorker(int coreId) {
 					{
 						process->setState(Process::FINISHED);
 						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-						memoryProcesses.erase(remove(memoryProcesses.begin(), memoryProcesses.end(), process), memoryProcesses.end());
+						memoryAllocator->deallocate(process->getMemoryPointer(), process->getMemPerProc()); // Corrected line
 						finishedProcesses.push_back(process);
 					}
 				}
@@ -244,13 +243,10 @@ void cpuWorker(int coreId) {
 						readyQueue.push(baseScreen);
 					}
 				}
-				/*if (cpuCycles < 500) {
-					memoryFile(cpuCycles);
-				}*/
 			}
-			// fcfs
 			else {
-				for (int i = 1; i <= process->getCommandCounter(); i++) {
+				// fcfs
+				for (int i = process->getCurrLine(); i < process->getLinesOfCode(); ++i) {
 					for (int delay = 0; delay < delay_per_exec; ++delay) {
 						this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
 					}
@@ -269,7 +265,7 @@ void cpuWorker(int coreId) {
 					lock_guard<mutex> lock(mtx);
 					process->setState(Process::FINISHED);
 					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-					memoryProcesses.erase(remove(memoryProcesses.begin(), memoryProcesses.end(), process), memoryProcesses.end());
+					memoryAllocator->deallocate(process->getMemoryPointer(), process->getMemPerProc()); 
 					finishedProcesses.push_back(process);
 				}
 			}
@@ -281,6 +277,9 @@ void cpuWorker(int coreId) {
 		}
 	}
 }
+
+
+
 
 void scheduler() {
 	vector<std::thread> workerThreads;
@@ -388,11 +387,13 @@ void readConfigFile() {
 
 	// Set memory manager type
 
-	if (max_overall_mem == mem_per_frame)
+	if (max_overall_mem == mem_per_frame) {
 		memoryManager = "FLAT_MEMORY";
-	else
+		memoryAllocator = new FlatMemoryAllocator(max_overall_mem);
+	}
+	else{
 		memoryManager = "PAGING";
-
+	}
 	// Close the file
 	ConfigFile.close();
 }

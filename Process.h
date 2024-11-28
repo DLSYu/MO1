@@ -36,6 +36,8 @@ public:
 
 	void initializeCommands();
 	string getCurrentTime();
+	void setMemoryPointer(void* ptr);
+	void* getMemoryPointer() const;
 
 private:
 	int cpuCore;
@@ -50,4 +52,5 @@ private:
 	vector<shared_ptr<ICommand>> commandList;
 	bool fileExists(const string& filename);
 	int mem_per_proc;
+	void* memoryPointer;
 };

@@ -1,6 +1,6 @@
 #include "FlatMemoryAllocator.h"
 
-FlatMemoryAllocator::FlatMemoryAllocator(size_t maximumSize) 
+FlatMemoryAllocator::FlatMemoryAllocator(size_t maximumSize)
     : maximumSize(maximumSize), allocatedSize(0), memory(maximumSize, '.'), allocationMap() {
     initializeMemory();
 }
@@ -11,7 +11,7 @@ FlatMemoryAllocator::~FlatMemoryAllocator() {
 
 void* FlatMemoryAllocator::allocate(size_t size) {
     for (size_t i = 0; i < maximumSize - size + 1; ++i) {
-        if (!allocationMap[i] && canAllocateAt(i, size)) {
+        if (allocationMap.find(i) == allocationMap.end() && canAllocateAt(i, size)) {
             allocateAt(i, size);
             return &memory[i];
         }
@@ -19,10 +19,11 @@ void* FlatMemoryAllocator::allocate(size_t size) {
     return nullptr;
 }
 
-void FlatMemoryAllocator::deallocate(void* ptr) {
+void FlatMemoryAllocator::deallocate(void* ptr, size_t size) {
     size_t index = static_cast<char*>(ptr) - &memory[0];
-    if (allocationMap[index]) {
-        deallocateAt(index, 1); // Assuming deallocation of 1 block for simplicity
+    if (allocationMap.find(index) != allocationMap.end()) {
+        deallocateAt(index, size);
+        allocationMap.erase(index);
     }
 }
 
@@ -31,30 +32,27 @@ std::string FlatMemoryAllocator::visualizeMemory() {
 }
 
 void FlatMemoryAllocator::initializeMemory() {
-    for (size_t i = 0; i < maximumSize; ++i) {
-        allocationMap[i] = false;
-    }
+    // No need to initialize allocationMap as it is empty by default
 }
 
 bool FlatMemoryAllocator::canAllocateAt(size_t index, size_t size) const {
     if (index + size > maximumSize) return false;
     for (size_t i = index; i < index + size; ++i) {
-        if (allocationMap.at(i)) return false;
+        if (allocationMap.find(i) != allocationMap.end()) return false;
     }
     return true;
 }
 
 void FlatMemoryAllocator::allocateAt(size_t index, size_t size) {
     for (size_t i = index; i < index + size; ++i) {
-        allocationMap[i] = true;
         memory[i] = 'X'; // Mark allocated memory
     }
+    allocationMap[index] = size; // Store the size of the allocated block
     allocatedSize += size;
 }
 
 void FlatMemoryAllocator::deallocateAt(size_t index, size_t size) {
     for (size_t i = index; i < index + size; ++i) {
-        allocationMap[i] = false;
         memory[i] = '.'; // Mark deallocated memory
     }
     allocatedSize -= size;

@@ -137,3 +137,11 @@ void Process::initializeCommands() {
 	}
 }
 
+void Process::setMemoryPointer(void* ptr) {
+	memoryPointer = ptr;
+}
+
+void* Process::getMemoryPointer() const {
+	return memoryPointer;
+}
+

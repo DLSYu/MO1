@@ -11,6 +11,7 @@ public:
     void* allocate(size_t size);
     void deallocate(void* ptr, size_t size);
     std::string visualizeMemory();
+    size_t getAllocatedSize() const;
 
 private:
     size_t maximumSize;

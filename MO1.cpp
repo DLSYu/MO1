@@ -26,6 +26,7 @@ int max_overall_mem;
 int mem_per_frame;
 int min_mem_per_proc;
 int max_mem_per_proc;
+size_t curr_mem;
 
 // Memory Thigns
 string memoryManager = "";
@@ -508,6 +509,34 @@ int main() {
 				logFile << "--------------------------------------------------------------------" << endl;
 				logFile.close();
 			}
+		}
+		else if (command == "process-smi") {
+			cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
+			curr_mem = memoryAllocator->getAllocatedSize();
+			double memUtil = static_cast<double>(curr_mem) / static_cast<double>(max_overall_mem) * 100;
+
+			cout << "--------------------------------------------------------------------" << endl;
+			cout << "|           PROCESS-SMI V01.00         Driver Version 01.00        |" << endl;
+			cout << "--------------------------------------------------------------------" << endl;
+			cout << "CPU Util: " << cpuUtil << "%" << endl;
+			cout << "Memory Usage: " << curr_mem << "kB / " << max_overall_mem << "kB" << endl;
+			cout << "Memory Util: " << memUtil << "%" << endl;
+			cout << "====================================================================" << endl;
+			cout << "Running proccesses and memory usage: " << endl;
+			cout << "--------------------------------------------------------------------" << endl;
+			for (const auto& process : runningProcesses) {
+				cout << "Process Name: " << process->getName() << ", Memory Usage: " << process->getMemPerProc() << "kB" << endl;
+			}
+			cout << "--------------------------------------------------------------------" << endl;
+
+
+		}
+		else if (command == "vmstat") {
+			curr_mem = memoryAllocator->getAllocatedSize();
+			size_t free_mem = static_cast<size_t>(max_overall_mem - curr_mem);
+			cout << max_overall_mem << " kB total memory" << endl;
+			cout << curr_mem << " kB used memory" << endl;
+			cout << free_mem << " kB free memory" << endl;
 		}
 		else if (command == "scheduler-test") {
 			// Creating some test processes

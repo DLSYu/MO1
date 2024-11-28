@@ -57,3 +57,7 @@ void FlatMemoryAllocator::deallocateAt(size_t index, size_t size) {
     }
     allocatedSize -= size;
 }
+
+size_t FlatMemoryAllocator::getAllocatedSize() const {
+    return allocatedSize;
+}

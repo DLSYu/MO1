@@ -7,7 +7,7 @@ using namespace std;
 
 Process::Process(int pid, string processName, int linesOfCode, int mem_per_proc)
 	:pid(pid), processName(processName), cpuCore(-1), commandCounter(0), linesOfCode(linesOfCode),
-	remainingTime(0), processState(READY), currLine(1), timeCreated(getCurrentTime()) {}
+	remainingTime(0), processState(READY), currLine(1), timeCreated(getCurrentTime()), mem_per_proc(mem_per_proc) {}
 
 void Process::addCommand(ICommand::CommandType command) { // setting cid to 0 muna
 	commandList.push_back(make_shared<PrintCommand>(0, "Hello World from " + processName + "!"));
@@ -96,6 +96,10 @@ string Process::getName() const {
 
 string Process::getTimeCreated() const {
 	return timeCreated;
+}
+
+int Process::getMemPerProc() const {
+	return mem_per_proc;
 }
 
 Process::ProcessState Process::getProcessState() const {

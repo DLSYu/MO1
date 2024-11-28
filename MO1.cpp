@@ -23,7 +23,8 @@ int delay_per_exec;
 int cpuUtil;
 int max_overall_mem;
 int mem_per_frame;
-int mem_per_proc;
+int min_mem_per_proc;
+int max_mem_per_proc;
 
 // Global Variables
 bool schedulerRunning = false;
@@ -55,12 +56,16 @@ int getNumOfInstructions() {
 	return rand() % (max_ins - min_ins + 1) + min_ins;
 }
 
+int getRandomMemPerProc() {
+	return rand() % (max_mem_per_proc - min_mem_per_proc + 1) + min_mem_per_proc;
+}
+
 bool correctCommand(vector <string> keywords, const string& command) {
 	return ranges::find(keywords, command) != keywords.end();
 	/*return find(keywords.front(), keywords.back(), command) != keywords.back()*/
 }
 
-bool spaceInMemory() {
+bool spaceInMemory(int mem_per_proc) {
 	int maxMemProcs = max_overall_mem / mem_per_proc;
 	return memoryProcesses.size() < maxMemProcs;
 }
@@ -73,7 +78,7 @@ bool correctPosition(const string& keyword, const string& command) {
 void createProcessScreen(std::string processName) {
 	// Create process
 	std::string screenName = processName;
-	auto newScreen = make_shared<BaseScreen>(processName, currentPID, getNumOfInstructions(), mem_per_proc);
+	auto newScreen = make_shared<BaseScreen>(processName, currentPID, getNumOfInstructions(), getRandomMemPerProc());
 	currentPID++;
 	processVector.push_back(newScreen);
 	readyQueue.push(newScreen);
@@ -128,30 +133,30 @@ void attachScreen(string processName) {
 	}
 }
 
-void memoryFile(int cycle) {
-	lock_guard<mutex> lock(mtx);
-	string fileName = "memory-log" + to_string(cycle) + ".txt";
-	ofstream logFile(fileName);
-	Process tempProcess(0, "temp", 0, 0);
-
-	logFile << "Timestamp:" << tempProcess.getCurrentTime() << endl;
-	logFile << "Number of processes in memory: " << memoryProcesses.size() << endl;
-	logFile << "Total external fragmentation in KB: " << ((max_overall_mem / mem_per_proc) - memoryProcesses.size()) * mem_per_proc << endl;
-	logFile << "---------------------------------end-------------------------------- = " << max_overall_mem << endl;
-
-	int currentAddress = max_overall_mem;
-	for (auto it = memoryProcesses.begin(); it != memoryProcesses.end(); ++it) {
-		logFile << currentAddress << endl;
-		logFile << "Process: " << (*it)->getName() << endl;
-		currentAddress -= mem_per_proc;
-	}
-	while (currentAddress > 0) {
-		logFile << currentAddress << endl;
-		currentAddress -= mem_per_proc;
-	}
-	logFile << "-------------------------------start-------------------------------- = 0" << endl;
-	logFile.close();
-}
+//void memoryFile(int cycle) {
+//	lock_guard<mutex> lock(mtx);
+//	string fileName = "memory-log" + to_string(cycle) + ".txt";
+//	ofstream logFile(fileName);
+//	Process tempProcess(0, "temp", 0, 0);
+//
+//	logFile << "Timestamp:" << tempProcess.getCurrentTime() << endl;
+//	logFile << "Number of processes in memory: " << memoryProcesses.size() << endl;
+//	logFile << "Total external fragmentation in KB: " << ((max_overall_mem / mem_per_proc) - memoryProcesses.size()) * mem_per_proc << endl;
+//	logFile << "---------------------------------end-------------------------------- = " << max_overall_mem << endl;
+//
+//	int currentAddress = max_overall_mem;
+//	for (auto it = memoryProcesses.begin(); it != memoryProcesses.end(); ++it) {
+//		logFile << currentAddress << endl;
+//		logFile << "Process: " << (*it)->getName() << endl;
+//		currentAddress -= mem_per_proc;
+//	}
+//	while (currentAddress > 0) {
+//		logFile << currentAddress << endl;
+//		currentAddress -= mem_per_proc;
+//	}
+//	logFile << "-------------------------------start-------------------------------- = 0" << endl;
+//	logFile.close();
+//}
 
 
 
@@ -174,7 +179,7 @@ void cpuWorker(int coreId) {
 				process = baseScreen->getProcess();
 
 				// Check if there is space in memory or if the process is already in memory
-				if (spaceInMemory() || std::find(memoryProcesses.begin(), memoryProcesses.end(), process) != memoryProcesses.end()) {
+				if (spaceInMemory(process->getMemPerProc()) || std::find(memoryProcesses.begin(), memoryProcesses.end(), process) != memoryProcesses.end()) {
 					if (process) {
 						process->setCPUCoreID(coreId);
 						coresAvailable[coreId] = false;
@@ -237,9 +242,9 @@ void cpuWorker(int coreId) {
 						readyQueue.push(baseScreen);
 					}
 				}
-				if (cpuCycles < 500) {
+				/*if (cpuCycles < 500) {
 					memoryFile(cpuCycles);
-				}
+				}*/
 			}
 			// fcfs
 			else {
@@ -294,7 +299,7 @@ void scheduler() {
 			string processName = "screen_" + to_string(currentPID);
 
 			// Create new BaseScreen as shared_ptr
-			auto newScreen = make_shared<BaseScreen>(processName, currentPID++, getNumOfInstructions(), mem_per_proc);
+			auto newScreen = make_shared<BaseScreen>(processName, currentPID++, getNumOfInstructions(), getRandomMemPerProc());
 			{
 				unique_lock<std::mutex> lock(mtx);
 				readyQueue.push(newScreen);          // Add to readyQueue as shared_ptr
@@ -368,8 +373,11 @@ void readConfigFile() {
 		else if (key == "mem-per-frame") {
 			mem_per_frame = stoi(value);
 		}
-		else if (key == "mem-per-proc") {
-			mem_per_proc = stoi(value);
+		else if (key == "min-mem-per-proc") {
+			min_mem_per_proc = stoi(value);
+		}
+		else if (key == "max-mem-per-proc") {
+			max_mem_per_proc = stoi(value);
 		}
 	}
 

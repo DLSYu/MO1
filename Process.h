@@ -28,6 +28,7 @@ public:
 	int getLinesOfCode() const;
 	int getCPUCoreID() const;
 	int getCurrLine() const;
+	int getMemPerProc() const;
 
 	string getTimeCreated() const;
 	string getName() const;
@@ -48,5 +49,5 @@ private:
 	ProcessState processState;
 	vector<shared_ptr<ICommand>> commandList;
 	bool fileExists(const string& filename);
-	
+	int mem_per_proc;
 };

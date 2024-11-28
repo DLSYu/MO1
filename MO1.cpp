@@ -26,6 +26,8 @@ int mem_per_frame;
 int min_mem_per_proc;
 int max_mem_per_proc;
 
+string memoryManager = "";
+
 // Global Variables
 bool schedulerRunning = false;
 int currentPID = 1;
@@ -383,6 +385,13 @@ void readConfigFile() {
 
 	//Change CPU core size
 	coresAvailable = vector<bool>(num_cpu, true);
+
+	// Set memory manager type
+
+	if (max_overall_mem == mem_per_frame)
+		memoryManager = "FLAT_MEMORY";
+	else
+		memoryManager = "PAGING";
 
 	// Close the file
 	ConfigFile.close();

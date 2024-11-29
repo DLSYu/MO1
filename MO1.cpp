@@ -29,7 +29,7 @@ int max_mem_per_proc;
 
 // Memory Thigns
 string memoryManager = "";
-FlatMemoryAllocator* memoryAllocator;
+IMemoryAllocator* memoryAllocator;
 size_t curr_mem;
 
 
@@ -81,7 +81,7 @@ bool correctPosition(const string& keyword, const string& command) {
 void createProcessScreen(std::string processName) {
 	// Create process
 	std::string screenName = processName;
-	auto newScreen = make_shared<BaseScreen>(processName, currentPID, getNumOfInstructions(), getRandomMemPerProc());
+	auto newScreen = make_shared<BaseScreen>(processName, currentPID, getNumOfInstructions(), getRandomMemPerProc(), mem_per_frame);
 	currentPID++;
 	processVector.push_back(newScreen);
 	readyQueue.push(newScreen);
@@ -183,7 +183,7 @@ void cpuWorker(int coreId) {
 				// Check if there is space in memory or if the process is already in memory
 				//	get ptr from memoryAllocator->allocate(process->getMemPerProc())
 				// 	put that variable in the if condition below
-				if (void* memPtr = memoryAllocator->allocate(process->getMemPerProc())) {
+				if (void* memPtr = memoryAllocator->allocate(process)) {
 					if (process) {
 						// Set the memory pointer
 						process->setMemoryPointer(memPtr);
@@ -233,7 +233,7 @@ void cpuWorker(int coreId) {
 					{
 						process->setState(Process::FINISHED);
 						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-						memoryAllocator->deallocate(process->getMemoryPointer(), process->getMemPerProc()); // Corrected line
+						memoryAllocator->deallocate(process->getMemoryPointer(), process); // Corrected line
 						finishedProcesses.push_back(process);
 					}
 				}
@@ -242,7 +242,7 @@ void cpuWorker(int coreId) {
 						lock_guard<mutex> lock(mtx);
 						process->setState(Process::READY);
 						runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-						memoryAllocator->deallocate(process->getMemoryPointer(), process->getMemPerProc()); // Corrected line
+						memoryAllocator->deallocate(process->getMemoryPointer(), process); // Corrected line
 						readyQueue.push(baseScreen);
 					}
 				}
@@ -268,7 +268,7 @@ void cpuWorker(int coreId) {
 					lock_guard<mutex> lock(mtx);
 					process->setState(Process::FINISHED);
 					runningProcesses.erase(remove(runningProcesses.begin(), runningProcesses.end(), process), runningProcesses.end());
-					memoryAllocator->deallocate(process->getMemoryPointer(), process->getMemPerProc()); 
+					memoryAllocator->deallocate(process->getMemoryPointer(), process); 
 					finishedProcesses.push_back(process);
 				}
 			}
@@ -303,7 +303,7 @@ void scheduler() {
 			string processName = "screen_" + to_string(currentPID);
 
 			// Create new BaseScreen as shared_ptr
-			auto newScreen = make_shared<BaseScreen>(processName, currentPID++, getNumOfInstructions(), getRandomMemPerProc());
+			auto newScreen = make_shared<BaseScreen>(processName, currentPID++, getNumOfInstructions(), getRandomMemPerProc(), mem_per_frame);
 			{
 				unique_lock<std::mutex> lock(mtx);
 				readyQueue.push(newScreen);          // Add to readyQueue as shared_ptr

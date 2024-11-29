@@ -5,9 +5,9 @@
 #include <fstream>
 using namespace std;
 
-Process::Process(int pid, string processName, int linesOfCode, int mem_per_proc)
+Process::Process(int pid, string processName, int linesOfCode, int mem_per_proc, int mem_per_frame)
 	:pid(pid), processName(processName), cpuCore(-1), commandCounter(0), linesOfCode(linesOfCode),
-	remainingTime(0), processState(READY), currLine(1), timeCreated(getCurrentTime()), mem_per_proc(mem_per_proc) {}
+	remainingTime(0), processState(READY), currLine(1), timeCreated(getCurrentTime()), mem_per_proc(mem_per_proc), pagesRequired(mem_per_proc/mem_per_frame) {}
 
 void Process::addCommand(ICommand::CommandType command) { // setting cid to 0 muna
 	commandList.push_back(make_shared<PrintCommand>(0, "Hello World from " + processName + "!"));
@@ -145,3 +145,6 @@ void* Process::getMemoryPointer() const {
 	return memoryPointer;
 }
 
+int Process::getPagesRequired() {
+	return pagesRequired;
+}

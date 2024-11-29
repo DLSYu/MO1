@@ -14,7 +14,7 @@ public:
 		WAITING,
 		FINISHED
 	};
-	Process(int pid, string processName, int linesOfCode, int mem_per_proc);
+	Process(int pid, string processName, int linesOfCode, int mem_per_proc, int max_per_frame);
 	void addCommand(ICommand::CommandType command);
 	void setCPUCoreID(int coreId);
 	void setState(ProcessState processState);
@@ -29,6 +29,7 @@ public:
 	int getCPUCoreID() const;
 	int getCurrLine() const;
 	int getMemPerProc() const;
+	int getPagesRequired();
 
 	string getTimeCreated() const;
 	string getName() const;
@@ -53,4 +54,5 @@ private:
 	bool fileExists(const string& filename);
 	int mem_per_proc;
 	void* memoryPointer;
+	int pagesRequired;
 };

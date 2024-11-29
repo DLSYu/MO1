@@ -9,8 +9,9 @@ FlatMemoryAllocator::~FlatMemoryAllocator() {
     memory.clear();
 }
 
-void* FlatMemoryAllocator::allocate(size_t size) {
+void* FlatMemoryAllocator::allocate(std::shared_ptr<Process> process) {
     std::lock_guard<std::mutex> lock(mtx); // Lock guard for thread safety
+	size_t size = process->getMemPerProc();
     for (size_t i = 0; i < maximumSize - size + 1; ++i) {
         if (allocationMap.find(i) == allocationMap.end() && canAllocateAt(i, size)) {
             allocateAt(i, size);
@@ -20,8 +21,9 @@ void* FlatMemoryAllocator::allocate(size_t size) {
     return nullptr;
 }
 
-void FlatMemoryAllocator::deallocate(void* ptr, size_t size) {
+void FlatMemoryAllocator::deallocate(void* ptr, std::shared_ptr<Process> process) {
     std::lock_guard<std::mutex> lock(mtx); // Lock guard for thread safety
+	size_t size = process->getMemPerProc();
     size_t index = static_cast<char*>(ptr) - &memory[0];
     auto it = allocationMap.find(index);
     if (it != allocationMap.end() && it->second == size) {
@@ -60,6 +62,7 @@ void FlatMemoryAllocator::deallocateAt(size_t index, size_t size) {
     allocationMap.erase(index);
     allocatedSize -= size;
 }
+
 size_t FlatMemoryAllocator::getAllocatedSize() const {
     return allocatedSize;
 }

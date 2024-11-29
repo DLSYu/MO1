@@ -1,32 +1,32 @@
-// FlatMemoryAllocator.h
-#pragma once
+#ifndef FLATMEMORYALLOCATOR_H
+#define FLATMEMORYALLOCATOR_H
+
+#include "IMemoryAllocator.h"
 #include <vector>
 #include <unordered_map>
-#include <string>
 #include <mutex>
-#include <iostream>
 
-class FlatMemoryAllocator {
+class FlatMemoryAllocator : public IMemoryAllocator {
 public:
     FlatMemoryAllocator(size_t maximumSize);
     ~FlatMemoryAllocator();
-    void* allocate(size_t size);
-    void deallocate(void* ptr, size_t size);
-    std::string visualizeMemory();
-    bool canAllocateAt(size_t index, size_t size) const;
-    size_t getAllocatedSize() const;
+
+    void* allocate(std::shared_ptr<Process> process) override;
+    void deallocate(void* ptr, std::shared_ptr<Process> process) override;
+    std::string visualizeMemory() override;
+    size_t getAllocatedSize() const override;
 
 private:
+    void initializeMemory();
+    bool canAllocateAt(size_t index, size_t size) const;
+    void allocateAt(size_t index, size_t size);
+    void deallocateAt(size_t index, size_t size);
+
     size_t maximumSize;
     size_t allocatedSize;
     std::vector<char> memory;
     std::unordered_map<size_t, size_t> allocationMap;
     std::mutex mtx;
-
-    void initializeMemory();
-    void allocateAt(size_t index, size_t size);
-    void deallocateAt(size_t index, size_t size);
-    
 };
 
-
+#endif // FLATMEMORYALLOCATOR_H

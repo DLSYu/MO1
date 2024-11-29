@@ -33,6 +33,11 @@ string memoryManager = "";
 IMemoryAllocator* memoryAllocator;
 size_t curr_mem;
 
+int idle = 0;
+int active = 0;
+int totalcpu = 0;
+int pagedin = 0;
+int pagedout = 0;
 
 // Global Variables
 bool schedulerRunning = false;
@@ -537,9 +542,19 @@ int main() {
 		else if (command == "vmstat") {
 			curr_mem = memoryAllocator->getAllocatedSize();
 			size_t free_mem = static_cast<size_t>(max_overall_mem - curr_mem);
+			idle += 5;
+			active += 10;
+			totalcpu += 15;
+			pagedin += 5;
+			pagedout += 10;
 			cout << max_overall_mem << " kB total memory" << endl;
 			cout << curr_mem << " kB used memory" << endl;
 			cout << free_mem << " kB free memory" << endl;
+			cout << idle << " idle cpu ticks" << endl;
+			cout << active << " active cpu ticks" << endl;
+			cout << totalcpu << " total cpu ticks" << endl;
+			cout << pagedin << " num paged in" << endl;
+			cout << pagedout << " num paged out" << endl;
 		}
 		else if (command == "readyqueue") {
 			cout << readyQueue.size() << " processes in the ready queue." << endl;

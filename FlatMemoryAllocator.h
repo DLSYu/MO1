@@ -14,6 +14,7 @@ public:
     void deallocate(void* ptr, size_t size);
     std::string visualizeMemory();
     bool canAllocateAt(size_t index, size_t size) const;
+    size_t getAllocatedSize() const;
 
 private:
     size_t maximumSize;
@@ -25,6 +26,7 @@ private:
     void initializeMemory();
     void allocateAt(size_t index, size_t size);
     void deallocateAt(size_t index, size_t size);
+    
 };
 
 

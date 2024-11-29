@@ -30,6 +30,8 @@ int max_mem_per_proc;
 // Memory Thigns
 string memoryManager = "";
 FlatMemoryAllocator* memoryAllocator;
+size_t curr_mem;
+
 
 // Global Variables
 bool schedulerRunning = false;
@@ -441,7 +443,7 @@ int main() {
 		else if (command == "screen -ls") {
 			{
 				lock_guard<mutex> lock(mtx);
-				cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
+				cpuUtil = (int)(((float)(num_cpu - countAvailCores()) / (float)num_cpu) * 100);
 				cout << "CPU Utilization: " << cpuUtil << "%" << endl;
 				cout << "Cores Used: " << num_cpu - countAvailCores() << endl;
 				cout << "Cores Available: " << countAvailCores() << endl;
@@ -478,7 +480,7 @@ int main() {
 			{
 				lock_guard<mutex> lock(mtx);
 				ofstream logFile("csopesy-log.txt");
-				cpuUtil = ((num_cpu - countAvailCores()) / num_cpu) * 100;
+				cpuUtil = (int) ( ( (float) (num_cpu - countAvailCores()) / (float) num_cpu) * 100);
 				logFile << "CPU Utilization: " << cpuUtil << "%" << endl;
 				logFile << "Cores Used: " << num_cpu - countAvailCores() << endl;
 				logFile << "Cores Available: " << countAvailCores() << endl;
@@ -511,6 +513,35 @@ int main() {
 				logFile.close();
 			}
 		}
+		else if (command == "process-smi") {
+			cpuUtil = (int) (((float) (num_cpu - countAvailCores()) / (float) num_cpu) * 100);
+			curr_mem = memoryAllocator->getAllocatedSize();
+			double memUtil = static_cast<double>(curr_mem) / static_cast<double>(max_overall_mem) * 100;
+
+			cout << "--------------------------------------------------------------------" << endl;
+			cout << "|           PROCESS-SMI V01.00         Driver Version 01.00        |" << endl;
+			cout << "--------------------------------------------------------------------" << endl;
+			cout << "CPU Util: " << cpuUtil << "%" << endl;
+			cout << "Memory Usage: " << curr_mem << "kB / " << max_overall_mem << "kB" << endl;
+			cout << "Memory Util: " << memUtil << "%" << endl;
+			cout << "====================================================================" << endl;
+			cout << "Running proccesses and memory usage: " << endl;
+			cout << "--------------------------------------------------------------------" << endl;
+			for (const auto& process : runningProcesses) {
+				cout << "Process Name: " << process->getName() << ", Memory Usage: " << process->getMemPerProc() << "kB" << endl;
+			}
+			cout << "--------------------------------------------------------------------" << endl;
+
+
+		}
+		else if (command == "vmstat") {
+			curr_mem = memoryAllocator->getAllocatedSize();
+			size_t free_mem = static_cast<size_t>(max_overall_mem - curr_mem);
+			cout << max_overall_mem << " kB total memory" << endl;
+			cout << curr_mem << " kB used memory" << endl;
+			cout << free_mem << " kB free memory" << endl;
+		}
+
 		else if (command == "scheduler-test") {
 			// Creating some test processes
 			if (!schedulerRunning) {

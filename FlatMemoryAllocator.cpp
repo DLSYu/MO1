@@ -60,3 +60,6 @@ void FlatMemoryAllocator::deallocateAt(size_t index, size_t size) {
     allocationMap.erase(index);
     allocatedSize -= size;
 }
+size_t FlatMemoryAllocator::getAllocatedSize() const {
+    return allocatedSize;
+}

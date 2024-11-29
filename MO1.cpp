@@ -178,7 +178,6 @@ void cpuWorker(int coreId) {
 				// Get a shared pointer to BaseScreen from readyQueue
 				baseScreen = readyQueue.front();
 				readyQueue.pop();
-
 				// Get the Process associated with the BaseScreen
 				process = baseScreen->getProcess();
 				// Check if there is space in memory or if the process is already in memory
@@ -254,7 +253,6 @@ void cpuWorker(int coreId) {
 					for (int delay = 0; delay < delay_per_exec; ++delay) {
 						this_thread::sleep_for(chrono::milliseconds(delay_per_exec));
 					}
-
 					process->setCurrLine(i);
 					this_thread::sleep_for(chrono::milliseconds(process->getRemainingTime()));
 					process->executeCommand();
@@ -542,6 +540,12 @@ int main() {
 			cout << max_overall_mem << " kB total memory" << endl;
 			cout << curr_mem << " kB used memory" << endl;
 			cout << free_mem << " kB free memory" << endl;
+		}
+		else if (command == "readyqueue") {
+			cout << readyQueue.size() << " processes in the ready queue." << endl;
+		}
+		else if (command == "vismem") {
+			cout << memoryAllocator->visualizeMemory() << endl;
 		}
 
 		else if (command == "scheduler-test") {

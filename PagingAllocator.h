@@ -13,6 +13,7 @@ public:
     void deallocate(void* ptr, std::shared_ptr<Process> process) override; // Updated signature
     std::string visualizeMemory() override;
     size_t getAllocatedSize() const override;
+	void* allocateBackingStore(std::shared_ptr<Process> process);
 
 private:
     size_t maxMemorySize;

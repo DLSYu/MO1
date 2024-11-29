@@ -9,6 +9,7 @@
 
 #include "BaseScreen.h"
 #include "FlatMemoryAllocator.h"
+#include "PagingAllocator.h"
 
 using namespace std;
 
@@ -397,6 +398,7 @@ void readConfigFile() {
 	}
 	else{
 		memoryManager = "PAGING";
+		memoryAllocator = new PagingAllocator(max_overall_mem, mem_per_frame);
 	}
 	// Close the file
 	ConfigFile.close();

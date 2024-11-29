@@ -2,6 +2,7 @@
 #include "Process.h"
 
 #include <iostream>
+#include <unordered_map>
 
 PagingAllocator::PagingAllocator(size_t maxMemorySize, size_t memPerFrame)
     : maxMemorySize(maxMemorySize), numFrames(maxMemorySize / memPerFrame), memPerFrame(memPerFrame), allocatedSize(0) {
@@ -18,15 +19,18 @@ void* PagingAllocator::allocate(std::shared_ptr<Process> process) {
     if (frameIndex == -1) {
         return nullptr; // Allocation failed
     }
-
+    process->setMemoryPointer(reinterpret_cast<void*>(frameIndex * memPerFrame));
     return process->getMemoryPointer();
 }
 
 void PagingAllocator::deallocate(void* ptr, std::shared_ptr<Process> process) {
     // Deallocation logic
     size_t frameIndex = reinterpret_cast<size_t>(ptr) / memPerFrame;
-    size_t numFramesToDeallocate = process->getPagesRequired();
-    deallocateFrames(numFramesToDeallocate, frameIndex);
+    auto it = frameMap.find(frameIndex);
+    if (it != frameMap.end()) {
+        size_t numFramesToDeallocate = process->getPagesRequired();
+        deallocateFrames(numFramesToDeallocate, frameIndex);
+    }
 }
 
 void* PagingAllocator::allocateBackingStore(std::shared_ptr<Process> process) {
@@ -43,7 +47,11 @@ void* PagingAllocator::allocateBackingStore(std::shared_ptr<Process> process) {
 
 std::string PagingAllocator::visualizeMemory() {
     // Visualization logic
-	return freeFrameList.size() == numFrames ? std::string(numFrames, '.') : std::string(numFrames, 'X');
+    std::string memoryVisualization(numFrames, '.');
+    for (const auto& frame : frameMap) {
+        memoryVisualization[frame.first] = 'X';
+    }
+    return memoryVisualization;
 }
 
 size_t PagingAllocator::getAllocatedSize() const {
@@ -54,11 +62,14 @@ size_t PagingAllocator::allocateFrames(size_t numFrames, size_t processId) {
     if (freeFrameList.size() < numFrames) {
         return -1; // Not enough free frames
     }
-    size_t frameIndex = freeFrameList.back();
-    freeFrameList.pop_back();
-    frameMap[frameIndex] = processId;
+    size_t firstFrameIndex = freeFrameList.back();
+    for (size_t i = 0; i < numFrames; ++i) {
+        size_t frameIndex = freeFrameList.back();
+        freeFrameList.pop_back();
+        frameMap[frameIndex] = processId;
+    }
     allocatedSize += numFrames * memPerFrame;
-    return frameIndex;
+    return firstFrameIndex;
 }
 
 void PagingAllocator::deallocateFrames(size_t numFrames, size_t frameIndex) {
